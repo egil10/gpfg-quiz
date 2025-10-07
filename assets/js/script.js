@@ -108,14 +108,15 @@ let gameState = {
   maxStreak: 0,
   totalQuestions: 10,
   currentCategory: 'all',
-  currentYear: 'all',
+  currentYear: '2025', // Default to latest year
   currentRegion: 'all',
   currentIndustry: 'all',
   questions: [],
   currentQuestionData: null,
   gameStarted: false,
   gameEnded: false,
-  language: 'en'
+  language: 'en',
+  availableYears: []
 };
 
 // Data storage
@@ -133,13 +134,17 @@ const strings = {
       country: 'Country Quiz',
       industry: 'Industry Quiz',
       region: 'Region Quiz',
-      year: 'Year Quiz'
+      incorporated: 'Incorporated Country Quiz',
+      top100: 'Top 100 Companies',
+      marketValue: 'Market Value Estimation'
     },
     questions: {
       country: 'Which country is this company from?',
       industry: 'Which industry does this company belong to?',
       region: 'Which region is this company from?',
-      year: 'In which year was this company held?'
+      incorporated: 'In which country is this company incorporated?',
+      top100: 'Which country is this top 100 company from?',
+      marketValue: 'What is the estimated market value of this company?'
     },
     buttons: {
       playAgain: 'Play Again',
@@ -209,6 +214,15 @@ async function loadData() {
       nbimData = await response.json();
       filteredData = [...nbimData];
       console.log(`Loaded ${nbimData.length} companies from JSON file`);
+      
+      // Extract available years
+      const years = [...new Set(nbimData.map(item => item.YEAR).filter(year => year))].sort((a, b) => b - a);
+      gameState.availableYears = years;
+      
+      // Set default year to the latest available
+      if (years.length > 0) {
+        gameState.currentYear = years[0].toString();
+      }
     } else {
       throw new Error('Failed to load JSON data');
     }
@@ -218,6 +232,10 @@ async function loadData() {
     // Fallback to sample data
     nbimData = generateSampleData();
     filteredData = [...nbimData];
+    
+    // Set up sample years
+    gameState.availableYears = [2025, 2024, 2023];
+    gameState.currentYear = '2025';
   }
 }
 
@@ -295,6 +313,12 @@ function setupEventListeners() {
     categorySelect.addEventListener('change', handleCategoryChange);
   }
   
+  // Year selector
+  const yearSelect = document.getElementById('year-select');
+  if (yearSelect) {
+    yearSelect.addEventListener('change', handleYearChange);
+  }
+  
   // Modal close buttons
   document.getElementById('close-companies-modal')?.addEventListener('click', () => hideModal('companies-modal'));
   document.getElementById('close-portfolio-modal')?.addEventListener('click', () => hideModal('portfolio-modal'));
@@ -323,20 +347,71 @@ function handleCategoryChange(event) {
   resetGame();
 }
 
+// Handle year change
+function handleYearChange(event) {
+  const newYear = event.target.value;
+  gameState.currentYear = newYear;
+  filteredData = filterData();
+  
+  // Show facts about the selected year
+  showYearFacts(newYear);
+  resetGame();
+}
+
+// Show facts about the selected year
+function showYearFacts(year) {
+  const yearData = nbimData.filter(item => item.YEAR === parseInt(year));
+  const companyCount = yearData.length;
+  
+  let facts = `Year ${year} Portfolio: ${companyCount.toLocaleString()} companies`;
+  
+  if (companyCount > 0) {
+    const totalValueNOK = yearData.reduce((sum, item) => sum + (item.MVAL_NOK || 0), 0);
+    const totalValueUSD = yearData.reduce((sum, item) => sum + (item.MVAL_USD || 0), 0);
+    
+    if (totalValueUSD > 0) {
+      facts += ` • Total Value: $${(totalValueUSD / 1000000000).toFixed(1)}B USD`;
+    }
+    
+    const regions = [...new Set(yearData.map(item => item.REGION).filter(r => r))];
+    if (regions.length > 0) {
+      facts += ` • ${regions.length} regions`;
+    }
+  }
+  
+  // Update collection info with facts
+  const collectionInfo = document.getElementById('collection-info');
+  if (collectionInfo) {
+    collectionInfo.textContent = facts;
+  }
+}
+
 // Filter data based on current filters
 function filterData() {
   let filtered = [...nbimData];
   
+  // Filter by year
   if (gameState.currentYear !== 'all') {
     filtered = filtered.filter(item => item.YEAR === parseInt(gameState.currentYear));
   }
   
+  // Filter by region
   if (gameState.currentRegion !== 'all') {
     filtered = filtered.filter(item => item.REGION === gameState.currentRegion);
   }
   
+  // Filter by industry
   if (gameState.currentIndustry !== 'all') {
     filtered = filtered.filter(item => item.INDUSTRY === gameState.currentIndustry);
+  }
+  
+  // Special filtering for top 100 category
+  if (gameState.currentCategory === 'top100') {
+    // Sort by market value and take top 100
+    filtered = filtered
+      .filter(item => item.MVAL_USD && item.MVAL_USD > 0)
+      .sort((a, b) => (b.MVAL_USD || 0) - (a.MVAL_USD || 0))
+      .slice(0, 100);
   }
   
   return filtered;
@@ -345,6 +420,7 @@ function filterData() {
 // Update UI
 function updateUI() {
   updateTitle();
+  updateYearSelector();
   updateCategorySelector();
   updateCollectionInfo();
   updateHowToPlayContent();
@@ -355,6 +431,24 @@ function updateTitle() {
   const title = document.querySelector('.title');
   if (title) {
     title.textContent = strings[gameState.language].title;
+  }
+}
+
+// Update year selector
+function updateYearSelector() {
+  const yearSelect = document.getElementById('year-select');
+  if (yearSelect && gameState.availableYears.length > 0) {
+    yearSelect.innerHTML = '';
+    
+    gameState.availableYears.forEach(year => {
+      const option = document.createElement('option');
+      option.value = year.toString();
+      option.textContent = year.toString();
+      if (year.toString() === gameState.currentYear) {
+        option.selected = true;
+      }
+      yearSelect.appendChild(option);
+    });
   }
 }
 
@@ -444,6 +538,11 @@ function showWelcomeMessage() {
     message.textContent = 'Select a category and click "Start Quiz" to begin!';
     message.classList.add('visible');
   }
+  
+  // Show initial year facts
+  if (gameState.currentYear) {
+    showYearFacts(gameState.currentYear);
+  }
 }
 
 // Start game
@@ -502,6 +601,12 @@ function getCorrectAnswer(company, type) {
       return company.INDUSTRY;
     case 'region':
       return company.REGION;
+    case 'incorporated':
+      return company.COUNTRY_INC;
+    case 'top100':
+      return company.COUNTRY || company.COUNRTY; // Same as country for top 100
+    case 'marketValue':
+      return formatMarketValue(company.MVAL_USD);
     case 'year':
       return company.YEAR.toString();
     default:
@@ -509,10 +614,32 @@ function getCorrectAnswer(company, type) {
   }
 }
 
+// Format market value for display
+function formatMarketValue(value) {
+  if (!value || value === 0) return 'Unknown';
+  
+  if (value >= 1000000000) {
+    return `$${(value / 1000000000).toFixed(1)}B`;
+  } else if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(1)}M`;
+  } else if (value >= 1000) {
+    return `$${(value / 1000).toFixed(1)}K`;
+  } else {
+    return `$${value.toFixed(0)}`;
+  }
+}
+
 // Generate options
 function generateOptions(correctCompany, type, availableData) {
   const correctAnswer = getCorrectAnswer(correctCompany, type);
   const options = [correctAnswer];
+  
+  // Special handling for market value estimation
+  if (type === 'marketValue') {
+    const correctValue = correctCompany.MVAL_USD || 0;
+    const intervals = generateMarketValueIntervals(correctValue);
+    return intervals;
+  }
   
   // Get unique values for the question type
   const allValues = new Set();
@@ -543,6 +670,35 @@ function generateOptions(correctCompany, type, availableData) {
   }
   
   // Shuffle options
+  return shuffleArray(options);
+}
+
+// Generate market value intervals for estimation quiz
+function generateMarketValueIntervals(correctValue) {
+  if (!correctValue || correctValue === 0) {
+    return ['$0', '$1M', '$10M', '$100M'];
+  }
+  
+  const correctFormatted = formatMarketValue(correctValue);
+  const options = [correctFormatted];
+  
+  // Generate 3 other intervals around the correct value
+  const multipliers = [0.1, 0.5, 2, 5, 10];
+  const usedMultipliers = new Set();
+  
+  while (options.length < 4) {
+    const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
+    if (usedMultipliers.has(randomMultiplier)) continue;
+    usedMultipliers.add(randomMultiplier);
+    
+    const intervalValue = correctValue * randomMultiplier;
+    const formatted = formatMarketValue(intervalValue);
+    
+    if (!options.includes(formatted)) {
+      options.push(formatted);
+    }
+  }
+  
   return shuffleArray(options);
 }
 
@@ -614,6 +770,9 @@ function selectAnswer(selectedAnswer) {
   
   const question = gameState.currentQuestionData;
   const isCorrect = selectedAnswer === question.correctAnswer;
+  
+  // Track the answer in the question object
+  question.answeredCorrectly = isCorrect;
   
   // Update score and streak
   if (isCorrect) {
@@ -690,8 +849,9 @@ function updateStreakBar() {
     if (i < gameState.currentQuestion) {
       // Check if this question was answered correctly
       const question = gameState.questions[i];
-      const wasCorrect = question && question.correctAnswer; // This is simplified
-      circle.classList.add(wasCorrect ? 'filled' : 'incorrect');
+      if (question && question.answeredCorrectly !== undefined) {
+        circle.classList.add(question.answeredCorrectly ? 'filled' : 'incorrect');
+      }
     } else if (i === gameState.currentQuestion && gameState.gameStarted && !gameState.gameEnded) {
       circle.classList.add('active');
     }

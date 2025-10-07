@@ -21,32 +21,61 @@ The quiz uses real data from the Norwegian Oil Fund (NBIM) holdings, including:
 - Market values in both NOK and USD
 - Ownership percentages and voting rights
 
-## Setup
+## Quick Setup
 
-1. **Process the Data**:
+### Option 1: Automated Setup (Recommended)
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the automated setup script
+python setup.py
+```
+
+This will:
+- ✅ Check all dependencies
+- ✅ Verify the Excel data file exists
+- ✅ Process data from Excel to JSON
+- ✅ Verify the generated JSON files
+- ✅ Provide instructions for starting the server
+
+### Option 2: Manual Setup
+
+1. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Process the Data**:
    ```bash
    python process_data.py
    ```
    This converts the Excel data (`data/equities.xlsx`) to JSON format for the web application.
 
-2. **Serve the Application**:
+3. **Verify the Data** (optional):
+   ```bash
+   python verify_data.py
+   ```
+   This checks that the JSON files are valid and displays statistics about the dataset.
+
+4. **Serve the Application**:
    Since the application loads JSON data via fetch, you'll need to serve it from a web server:
    
-   **Option 1: Python HTTP Server**
+   **Option A: Python HTTP Server**
    ```bash
    python -m http.server 8000
    ```
    
-   **Option 2: Node.js HTTP Server**
+   **Option B: Node.js HTTP Server**
    ```bash
    npx http-server
    ```
    
-   **Option 3: Live Server (VS Code Extension)**
+   **Option C: Live Server (VS Code Extension)**
    - Install the "Live Server" extension in VS Code
    - Right-click on `index.html` and select "Open with Live Server"
 
-3. **Open in Browser**:
+5. **Open in Browser**:
    Navigate to `http://localhost:8000` (or the port shown by your server)
 
 ## How to Play
@@ -76,30 +105,77 @@ The quiz uses real data from the Norwegian Oil Fund (NBIM) holdings, including:
 ## File Structure
 
 ```
-├── index.html              # Main HTML file
+├── index.html                   # Main HTML file
 ├── assets/
 │   ├── css/
-│   │   └── style.css       # Main stylesheet
+│   │   └── style.css           # Main stylesheet
 │   └── js/
-│       └── script.js       # Game logic and data handling
+│       └── script.js           # Game logic and data handling
 ├── data/
-│   ├── equities.xlsx       # Source Excel data
+│   ├── equities.xlsx           # Source Excel data
 │   └── processed/
-│       ├── nbim_holdings.json  # Processed JSON data
+│       ├── nbim_holdings.json  # Processed JSON data (used by app)
 │       └── statistics.json     # Data statistics
-├── process_data.py         # Data processing script
-├── logo.svg               # Application logo
-└── README.md              # This file
+├── process_data.py             # Data processing script
+├── verify_data.py              # Data verification script
+├── setup.py                    # Automated setup script
+├── requirements.txt            # Python dependencies
+├── run_quiz.bat                # Windows: Quick start (just run server)
+├── setup_and_run.bat           # Windows: Full setup + run
+├── logo.svg                    # Application logo
+├── README.md                   # This file
+└── SETUP_GUIDE.md              # Detailed setup guide
 ```
 
 ## Data Processing
 
-The `process_data.py` script:
-- Reads the Excel file with NBIM holdings data
-- Cleans and validates the data
-- Converts to JSON format for web consumption
-- Generates statistics about the dataset
-- Handles data type conversions and formatting
+### Scripts
+
+1. **`setup.py`** - Automated setup and verification
+   - Checks dependencies
+   - Verifies Excel file exists
+   - Processes data
+   - Verifies output
+   - Provides server instructions
+
+2. **`process_data.py`** - Data processing
+   - Reads the Excel file with NBIM holdings data
+   - Cleans and validates the data (e.g., fixes "COUNRTY" typo to "COUNTRY")
+   - Converts to JSON format for web consumption
+   - Generates statistics about the dataset
+   - Handles data type conversions and formatting
+
+3. **`verify_data.py`** - Data verification
+   - Validates JSON files
+   - Checks data structure
+   - Displays statistics
+   - Shows sample data
+
+### Data Flow
+
+```
+data/equities.xlsx
+        ↓ (process_data.py)
+data/processed/
+    ├── nbim_holdings.json    ← Main data file (used by web app)
+    └── statistics.json       ← Dataset statistics
+```
+
+### Updating Data
+
+When you get a new Excel file:
+```bash
+# 1. Replace the Excel file
+cp new_equities.xlsx data/equities.xlsx
+
+# 2. Run the automated setup
+python setup.py
+
+# Or just process the data
+python process_data.py
+```
+
+The JSON files will be regenerated automatically.
 
 ## Browser Compatibility
 

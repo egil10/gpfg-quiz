@@ -3,7 +3,7 @@ body {
   margin: 0;
   padding: 0;
   background: #fafbfc;
-  color: #222;
+  color: #001538;
   /* Performance optimizations */
   will-change: auto;
   contain: layout style paint;
@@ -49,11 +49,47 @@ html, body {
   gap: 1rem;
 }
 
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.year-selector, .category-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.year-selector label, .category-selector label {
+  font-size: 0.8rem;
+  color: #001538;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.year-selector select, .category-selector select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #001538;
+  font-size: 0.9rem;
+  min-width: 120px;
+}
+
+.year-selector select:focus, .category-selector select:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
 .title {
   font-size: 1.3rem;
   letter-spacing: 0.12em;
   font-weight: 700;
-  color: #888;
+  color: #001538;
   cursor: pointer;
   transition: color 0.2s;
   padding-top: 0.2em;
@@ -63,7 +99,7 @@ html, body {
 }
 
 .title:hover {
-  color: #222;
+  color: #4caf50;
 }
 
 .main-flex {
@@ -74,6 +110,15 @@ html, body {
   min-height: 100vh;
   padding-top: 120px; /* Increased to ensure logo and controls are visible */
   gap: 3.75rem;
+}
+
+/* Swap order on desktop - buttons first, then company info */
+.main-flex .btn-col {
+  order: 1;
+}
+
+.main-flex .img-col {
+  order: 2;
 }
 
 .img-col {
@@ -109,7 +154,7 @@ html, body {
 #company-name {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #222;
+  color: #001538;
   margin: 0 0 1rem 0;
   line-height: 1.3;
 }
@@ -136,7 +181,7 @@ html, body {
 
 .company-detail-label {
   font-weight: 600;
-  color: #444;
+  color: #001538;
 }
 
 .company-detail-value {
@@ -876,14 +921,17 @@ button.loading {
     padding-top: 2rem;
   }
 
-  .btn-col {
+  /* Reset order on mobile - company info first, then buttons */
+  .main-flex .btn-col {
+    order: 2;
     min-width: 0;
     width: 90vw;
     max-width: 25rem;
     margin-top: 1rem;
   }
 
-  .img-col {
+  .main-flex .img-col {
+    order: 1;
     width: 100vw;
   }
 
@@ -928,6 +976,21 @@ button.loading {
     width: 100%;
     justify-content: space-between;
     align-items: center;
+  }
+
+  .filter-group {
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .year-selector, .category-selector {
+    width: 100%;
+  }
+
+  .year-selector select, .category-selector select {
+    width: 100%;
+    min-width: auto;
   }
 
   .title {

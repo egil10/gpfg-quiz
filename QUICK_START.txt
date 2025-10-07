@@ -1,0 +1,162 @@
+================================================================================
+  NBIM QUIZ - QUICK START GUIDE
+================================================================================
+
+🎯 GOAL: Convert Excel data to JSON and run the quiz application
+
+✅ STATUS: All data processed successfully! 187,118 companies ready.
+
+================================================================================
+  FASTEST WAY TO START (Windows)
+================================================================================
+
+Just double-click:
+  ➤ run_quiz.bat
+
+That's it! Your browser will open automatically.
+
+================================================================================
+  FASTEST WAY TO START (Mac/Linux/Any)
+================================================================================
+
+1. Open terminal in this folder
+2. Run: python -m http.server 8000
+3. Open browser: http://localhost:8000
+
+================================================================================
+  FIRST TIME SETUP (If data isn't processed yet)
+================================================================================
+
+Windows:
+  ➤ Double-click: setup_and_run.bat
+
+Mac/Linux:
+  ➤ pip install -r requirements.txt
+  ➤ python setup.py
+
+================================================================================
+  DATA FLOW (What happens behind the scenes)
+================================================================================
+
+  data/equities.xlsx  (Excel file)
+         ↓
+  python process_data.py
+         ↓
+  data/processed/nbim_holdings.json  ← Used by web app
+  data/processed/statistics.json     ← Stats
+
+================================================================================
+  USEFUL COMMANDS
+================================================================================
+
+Process data:
+  python process_data.py
+
+Verify data:
+  python verify_data.py
+
+Full setup:
+  python setup.py
+
+Start server:
+  python -m http.server 8000
+
+Test data loading:
+  Open: http://localhost:8000/test_data.html
+
+================================================================================
+  DATASET INFO
+================================================================================
+
+✓ 187,118 companies
+✓ 108 countries  
+✓ 10 regions
+✓ 16 industries
+✓ 1998-2025 (28 years)
+✓ $12.9 trillion USD total value
+
+Top Countries:
+  1. United States - 44,216
+  2. Japan - 31,950
+  3. China - 11,810
+
+================================================================================
+  FILES YOU NEED
+================================================================================
+
+Source Data:
+  ✓ data/equities.xlsx - Original Excel file
+
+Generated Data:
+  ✓ data/processed/nbim_holdings.json - Main data (used by app)
+  ✓ data/processed/statistics.json - Stats
+
+Web App:
+  ✓ index.html - Main quiz page
+  ✓ assets/js/script.js - Game logic
+  ✓ assets/css/style.css - Styles
+
+Scripts:
+  ✓ process_data.py - Excel → JSON converter
+  ✓ verify_data.py - Data validator
+  ✓ setup.py - Automated setup
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+Problem: "Module not found: pandas"
+Solution: pip install -r requirements.txt
+
+Problem: "Failed to load data"
+Solution: 
+  1. Make sure you're running a web server
+  2. Don't open index.html directly (file://)
+  3. Use: python -m http.server 8000
+
+Problem: "Excel file not found"
+Solution: Ensure data/equities.xlsx exists
+
+Problem: Changes not showing
+Solution: Hard refresh browser (Ctrl+Shift+R)
+
+================================================================================
+  UPDATING DATA (When you get new Excel file)
+================================================================================
+
+1. Replace file:
+   Copy new_data.xlsx → data/equities.xlsx
+
+2. Regenerate JSON:
+   python process_data.py
+
+3. Refresh browser
+   Done!
+
+================================================================================
+  MORE INFO
+================================================================================
+
+Detailed guides:
+  → README.md - Project overview
+  → SETUP_GUIDE.md - Step-by-step setup
+  → SUMMARY.md - What we built
+
+Test page:
+  → http://localhost:8000/test_data.html
+
+================================================================================
+  🎉 YOU'RE READY!
+================================================================================
+
+Your NBIM Quiz is fully set up with 187,118 real companies from the 
+Norwegian Oil Fund. Start the server and enjoy testing your knowledge!
+
+Commands to remember:
+  ➤ python -m http.server 8000  (start server)
+  ➤ python process_data.py      (update data)
+
+Open: http://localhost:8000
+
+================================================================================
+
