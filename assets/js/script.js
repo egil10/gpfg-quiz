@@ -199,9 +199,9 @@ const strings = {
 };
 
 // Initialize the game
-function initGame() {
+async function initGame() {
   initPerformanceMonitoring();
-  loadData();
+  await loadData();
   setupEventListeners();
   updateUI();
   showWelcomeMessage();
@@ -214,7 +214,6 @@ async function loadData() {
     const response = await fetch('data/processed/nbim_holdings.json');
     if (response.ok) {
       nbimData = await response.json();
-      filteredData = [...nbimData];
       console.log(`Loaded ${nbimData.length} companies from JSON file`);
       
       // Extract available years
@@ -225,6 +224,10 @@ async function loadData() {
       if (years.length > 0) {
         gameState.currentYear = years[0].toString();
       }
+      
+      // Apply initial filtering
+      filteredData = filterData();
+      console.log(`Filtered to ${filteredData.length} companies for year ${gameState.currentYear}`);
     } else {
       throw new Error('Failed to load JSON data');
     }
@@ -233,11 +236,13 @@ async function loadData() {
     console.log('Falling back to sample data...');
     // Fallback to sample data
     nbimData = generateSampleData();
-    filteredData = [...nbimData];
     
     // Set up sample years
     gameState.availableYears = [2025, 2024, 2023];
     gameState.currentYear = '2025';
+    
+    // Apply initial filtering
+    filteredData = filterData();
   }
 }
 
@@ -346,6 +351,7 @@ function setupEventListeners() {
 function handleCategoryChange(event) {
   gameState.currentCategory = event.target.value;
   filteredData = filterData();
+  console.log(`Category changed to: ${gameState.currentCategory}, filtered to ${filteredData.length} companies`);
   resetGame();
 }
 
@@ -354,6 +360,7 @@ function handleYearChange(event) {
   const newYear = event.target.value;
   gameState.currentYear = newYear;
   filteredData = filterData();
+  console.log(`Year changed to: ${newYear}, filtered to ${filteredData.length} companies`);
   
   // Show facts about the selected year
   showYearFacts(newYear);
@@ -571,6 +578,8 @@ function generateQuestions() {
   gameState.questions = [];
   const availableData = [...filteredData];
   
+  console.log(`Generating ${gameState.totalQuestions} questions from ${availableData.length} available companies`);
+  
   for (let i = 0; i < gameState.totalQuestions; i++) {
     if (availableData.length === 0) break;
     
@@ -583,11 +592,16 @@ function generateQuestions() {
       questionType = types[Math.floor(Math.random() * types.length)];
     }
     
+    const correctAnswer = getCorrectAnswer(company, questionType);
+    const questionOptions = generateOptions(company, questionType, availableData);
+    
+    console.log(`Question ${i + 1}: ${company.NAME} - Type: ${questionType}, Correct: ${correctAnswer}, Options: [${questionOptions.join(', ')}]`);
+    
     const question = {
       company: company,
       type: questionType,
-      correctAnswer: getCorrectAnswer(company, questionType),
-      options: generateOptions(company, questionType, availableData)
+      correctAnswer: correctAnswer,
+      options: questionOptions
     };
     
     gameState.questions.push(question);
@@ -643,19 +657,11 @@ function generateOptions(correctCompany, type, availableData) {
     return intervals;
   }
   
-  // Get unique values for the question type
+  // Get unique values for the question type from ALL data (not just availableData)
   const allValues = new Set();
-  availableData.forEach(company => {
-    const value = getCorrectAnswer(company, type);
-    if (value && value !== correctAnswer) {
-      allValues.add(value);
-    }
-  });
-  
-  // Add more values from the full dataset if needed
   nbimData.forEach(company => {
     const value = getCorrectAnswer(company, type);
-    if (value && value !== correctAnswer) {
+    if (value && value !== correctAnswer && value !== 'Unknown') {
       allValues.add(value);
     }
   });
@@ -671,8 +677,35 @@ function generateOptions(correctCompany, type, availableData) {
     }
   }
   
+  // If we still don't have 4 options, add some defaults
+  const defaultOptions = getDefaultOptions(type);
+  while (options.length < 4) {
+    const randomDefault = defaultOptions[Math.floor(Math.random() * defaultOptions.length)];
+    if (!options.includes(randomDefault)) {
+      options.push(randomDefault);
+    }
+  }
+  
   // Shuffle options
   return shuffleArray(options);
+}
+
+// Get default options for each type if we don't have enough data
+function getDefaultOptions(type) {
+  switch (type) {
+    case 'country':
+      return ['United States', 'China', 'Japan', 'Germany', 'United Kingdom', 'France'];
+    case 'industry':
+      return ['Technology', 'Financials', 'Health Care', 'Consumer Staples', 'Industrials', 'Energy'];
+    case 'region':
+      return ['North America', 'Europe', 'Asia', 'Oceania', 'Latin America', 'Africa'];
+    case 'year':
+      return ['2025', '2024', '2023', '2022', '2021', '2020'];
+    case 'incorporated':
+      return ['United States', 'China', 'Japan', 'Germany', 'United Kingdom', 'France'];
+    default:
+      return ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
+  }
 }
 
 // Generate market value intervals for estimation quiz
@@ -752,7 +785,7 @@ function showQuestion() {
     options.innerHTML = `
       <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem; color: #333;">${questionText}</div>
       ${question.options.map((option, index) => `
-        <button onclick="selectAnswer('${option}')" class="answer-btn">${option}</button>
+        <button onclick="selectAnswer('${option.replace(/'/g, "\\'")}')" class="answer-btn">${option}</button>
       `).join('')}
     `;
   }
@@ -981,7 +1014,11 @@ function toggleLanguage() {
 }
 
 // Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initGame);
+document.addEventListener('DOMContentLoaded', () => {
+  initGame().catch(error => {
+    console.error('Error initializing game:', error);
+  });
+});
 
 // Make functions globally available
 window.startGame = startGame;

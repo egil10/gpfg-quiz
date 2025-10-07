@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBIM Quiz Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>NBIM Quiz Debug Tool</h1>
+    
+    <div id="debug-output"></div>
+    
+    <script>
+        async function debugQuiz() {
+            const output = document.getElementById('debug-output');
+            
+            try {
+                // Test data loading
+                output.innerHTML += '<div class="debug-section"><h3>1. Loading Data</h3>';
+                
+                const response = await fetch('data/processed/nbim_holdings.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load data: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                output.innerHTML += `<div class="success">✓ Loaded ${data.length.toLocaleString()} companies</div>`;
+                
+                // Test data structure
+                output.innerHTML += '<div class="debug-section"><h3>2. Data Structure Check</h3>';
+                const sample = data[0];
+                const requiredFields = ['REGION', 'COUNTRY', 'NAME', 'INDUSTRY', 'MVAL_NOK', 'MVAL_USD', 'VOTING', 'OWNERSHIP', 'COUNTRY_INC', 'YEAR'];
+                
+                requiredFields.forEach(field => {
+                    if (field in sample) {
+                        output.innerHTML += `<div class="success">✓ ${field}: ${sample[field]}</div>`;
+                    } else {
+                        output.innerHTML += `<div class="error">✗ Missing field: ${field}</div>`;
+                    }
+                });
+                
+                // Test UnitedHealth Group
+                output.innerHTML += '<div class="debug-section"><h3>3. UnitedHealth Group Check</h3>';
+                const unitedHealth = data.find(company => company.NAME && company.NAME.includes('UnitedHealth Group Inc'));
+                if (unitedHealth) {
+                    output.innerHTML += `<div class="success">✓ Found UnitedHealth Group Inc</div>`;
+                    output.innerHTML += `<div class="info">Industry: ${unitedHealth.INDUSTRY}</div>`;
+                    output.innerHTML += `<div class="info">Country: ${unitedHealth.COUNTRY}</div>`;
+                    output.innerHTML += `<div class="info">Region: ${unitedHealth.REGION}</div>`;
+                    output.innerHTML += `<div class="info">Year: ${unitedHealth.YEAR}</div>`;
+                } else {
+                    output.innerHTML += `<div class="error">✗ UnitedHealth Group Inc not found</div>`;
+                }
+                
+                // Test year filtering
+                output.innerHTML += '<div class="debug-section"><h3>4. Year Filtering Test</h3>';
+                const years = [...new Set(data.map(item => item.YEAR).filter(year => year))].sort((a, b) => b - a);
+                output.innerHTML += `<div class="info">Available years: ${years.slice(0, 10).join(', ')}...</div>`;
+                
+                const year2025 = data.filter(item => item.YEAR === 2025);
+                output.innerHTML += `<div class="info">Companies in 2025: ${year2025.length.toLocaleString()}</div>`;
+                
+                // Test industry distribution
+                output.innerHTML += '<div class="debug-section"><h3>5. Industry Distribution</h3>';
+                const industries = {};
+                data.forEach(company => {
+                    const industry = company.INDUSTRY || 'Unknown';
+                    industries[industry] = (industries[industry] || 0) + 1;
+                });
+                
+                const topIndustries = Object.entries(industries)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+                
+                topIndustries.forEach(([industry, count]) => {
+                    output.innerHTML += `<div class="info">${industry}: ${count.toLocaleString()} companies</div>`;
+                });
+                
+                // Test option generation
+                output.innerHTML += '<div class="debug-section"><h3>6. Option Generation Test</h3>';
+                
+                function getCorrectAnswer(company, type) {
+                    switch (type) {
+                        case 'country':
+                            return company.COUNTRY || company.COUNRTY;
+                        case 'industry':
+                            return company.INDUSTRY;
+                        case 'region':
+                            return company.REGION;
+                        case 'year':
+                            return company.YEAR.toString();
+                        default:
+                            return company.COUNTRY || company.COUNRTY;
+                    }
+                }
+                
+                function generateOptions(correctCompany, type) {
+                    const correctAnswer = getCorrectAnswer(correctCompany, type);
+                    const options = [correctAnswer];
+                    
+                    const allValues = new Set();
+                    data.forEach(company => {
+                        const value = getCorrectAnswer(company, type);
+                        if (value && value !== correctAnswer && value !== 'Unknown') {
+                            allValues.add(value);
+                        }
+                    });
+                    
+                    const allValuesArray = Array.from(allValues);
+                    
+                    while (options.length < 4 && allValuesArray.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * allValuesArray.length);
+                        const randomValue = allValuesArray.splice(randomIndex, 1)[0];
+                        if (!options.includes(randomValue)) {
+                            options.push(randomValue);
+                        }
+                    }
+                    
+                    return options.sort(() => Math.random() - 0.5);
+                }
+                
+                if (unitedHealth) {
+                    const industryOptions = generateOptions(unitedHealth, 'industry');
+                    output.innerHTML += `<div class="info">UnitedHealth industry options: [${industryOptions.join(', ')}]</div>`;
+                    output.innerHTML += `<div class="info">Correct answer should be: Health Care</div>`;
+                    output.innerHTML += `<div class="${industryOptions.includes('Health Care') ? 'success' : 'error'}">${industryOptions.includes('Health Care') ? '✓' : '✗'} Health Care is ${industryOptions.includes('Health Care') ? 'included' : 'missing'}</div>`;
+                }
+                
+            } catch (error) {
+                output.innerHTML += `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Run debug when page loads
+        debugQuiz();
+    </script>
+</body>
+</html>
