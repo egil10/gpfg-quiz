@@ -134,6 +134,7 @@ const strings = {
       country: 'Country Quiz',
       industry: 'Industry Quiz',
       region: 'Region Quiz',
+      year: 'Year Quiz',
       incorporated: 'Incorporated Country Quiz',
       top100: 'Top 100 Companies',
       marketValue: 'Market Value Estimation'
@@ -142,6 +143,7 @@ const strings = {
       country: 'Which country is this company from?',
       industry: 'Which industry does this company belong to?',
       region: 'Which region is this company from?',
+      year: 'In which year was this company in the NBIM portfolio?',
       incorporated: 'In which country is this company incorporated?',
       top100: 'Which country is this top 100 company from?',
       marketValue: 'What is the estimated market value of this company?'
@@ -577,7 +579,7 @@ function generateQuestions() {
     
     let questionType = gameState.currentCategory;
     if (questionType === 'all') {
-      const types = ['country', 'industry', 'region'];
+      const types = ['country', 'industry', 'region', 'year'];
       questionType = types[Math.floor(Math.random() * types.length)];
     }
     

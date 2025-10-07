@@ -131,6 +131,7 @@ html, body {
 .company-info {
   width: 100%;
   max-width: 31.25rem;
+  min-height: 280px; /* Prevent jumping when content changes */
   background: #fff;
   border-radius: 0.75rem;
   box-shadow: 0 0.125rem 1rem 0 rgba(0,0,0,0.07);
@@ -157,6 +158,14 @@ html, body {
   color: #001538;
   margin: 0 0 1rem 0;
   line-height: 1.3;
+  min-height: 4rem; /* Accommodate 2 lines of text */
+  max-height: 6rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Limit to 3 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
 }
 
 .company-details {
@@ -165,6 +174,7 @@ html, body {
   gap: 0.5rem;
   font-size: 1rem;
   color: #666;
+  min-height: 100px; /* Stable height for details section */
 }
 
 .company-detail-item {
@@ -249,12 +259,15 @@ html, body {
   gap: 1.125rem;
   width: 100%;
   max-width: 25rem;
+  min-height: 280px; /* Stable container height */
 }
 
 button {
   width: 100%;
   min-width: 13.75rem;
-  min-height: 3.375rem;
+  min-height: 3.5rem;
+  height: auto; /* Allow flexible height for long text */
+  max-height: 5rem;
   font-size: 1.1rem;
   font-family: inherit;
   border: 0.09375rem solid #d0d0d0;
@@ -266,6 +279,16 @@ button {
   cursor: pointer;
   outline: none;
   margin: 0;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
 button:hover:not(:disabled) {
