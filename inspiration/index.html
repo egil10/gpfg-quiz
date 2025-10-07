@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" id="html-element">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kunstquiz - Norwegian Art Challenge</title>
+  
+         <!-- Google Analytics 4 -->
+       <script async src="https://www.googletagmanager.com/gtag/js?id=G-WCCEEJ1H4H"></script>
+       <script>
+         window.dataLayer = window.dataLayer || [];
+         function gtag(){dataLayer.push(arguments);}
+         gtag('js', new Date());
+         gtag('config', 'G-WCCEEJ1H4H', {
+           page_title: 'Kunstquiz - Norwegian Art Challenge',
+           custom_map: {
+             'custom_parameter_1': 'game_events',
+             'custom_parameter_2': 'quiz_metrics'
+           }
+         });
+       </script>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="shortcut icon" href="favicon.ico">
+  
+  <link rel="stylesheet" href="assets/css/style.css">
+  <meta name="description" content="A fun quiz where you guess the artist behind famous Norwegian paintings. Test your knowledge of Norwegian art history!">
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet"></noscript>
+</head>
+<body>
+  <div class="top-bar">
+    <div class="top-left">
+      <span class="title">Kunstquiz</span>
+      <span id="collection-info" class="collection-info"></span>
+    </div>
+    <div class="top-right">
+      <div class="category-selector">
+        <select id="category-select"></select>
+      </div>
+    </div>
+  </div>
+  <div class="main-flex">
+    <div class="img-col">
+      <img id="painting" src="" alt="">
+      <div id="streak-bar"></div>
+    </div>
+    <div class="btn-col" id="btn-col">
+      <div id="options"></div>
+      <div id="message"></div>
+    </div>        
+    <div id="artist-popup-container"></div>
+  </div>
+  <div id="congrats-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="congrats-title">
+    <div class="modal-content">
+      <h2 id="congrats-title"></h2>
+      <p></p>
+      <button id="reset-btn"></button>
+    </div>
+  </div>
+  <div id="round-results-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="round-results-title">
+    <div class="modal-content round-results-content">
+      <h2 id="round-results-title"></h2>
+      <div class="round-results-stats">
+        <div class="stat-item">
+          <span class="stat-label"></span>
+          <span id="round-results-score" class="stat-value">0/10</span>
+        </div>
+      </div>
+      <div class="round-results-artists">
+        <span class="stat-label"></span>
+        <div id="round-results-artists-list" class="artists-list"></div>
+      </div>
+        <div id="round-results-feedback" class="round-results-feedback">
+  </div>
+      <div class="round-results-buttons">
+        <button id="round-results-play-again" class="primary-btn"></button>
+        <button id="round-results-download" class="secondary-btn" style="display:none;"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diploma Modal for Perfect Scores -->
+  <div id="diploma-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="diploma-title">
+    <div class="modal-content diploma-content">
+      <div class="diploma-container">
+        <div class="diploma-background">
+          <div class="diploma-painting-bg"></div>
+          <div class="diploma-artist-attribution"></div>
+        </div>
+        <div class="diploma-content-inner">
+          <div class="diploma-header">
+            <h1 id="diploma-title"></h1>
+            <h2 id="diploma-subtitle"></h2>
+          </div>
+          <div class="diploma-body">
+            <div class="diploma-achievement">
+              <h3 id="diploma-achievement-text"></h3>
+            </div>
+            <div class="diploma-description">
+              <p id="diploma-description-text"></p>
+            </div>
+            <div class="diploma-details">
+              <div class="diploma-detail">
+                <span class="diploma-label" id="diploma-awarded-label"></span>
+                <span class="diploma-value" id="diploma-awarded-value"></span>
+              </div>
+              <div class="diploma-detail">
+                <span class="diploma-label" id="diploma-category-label"></span>
+                <span class="diploma-value" id="diploma-category-value"></span>
+              </div>
+              <div class="diploma-detail">
+                <span class="diploma-label" id="diploma-date-label"></span>
+                <span class="diploma-value" id="diploma-date-value"></span>
+              </div>
+            </div>
+          </div>
+          <div class="diploma-footer">
+            <!-- Removed diploma seal -->
+          </div>
+        </div>
+      </div>
+        <div class="diploma-buttons">
+          <button id="diploma-download" class="primary-btn"></button>
+          <button id="diploma-play-again" class="secondary-btn"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modern social footer -->
+  <footer class="footer-social">
+    <div class="footer-links">
+      <a href="#" id="show-artists-link" class="social-link">Painters</a>
+      <a href="#" id="show-gallery-link" class="footer-link">Gallery</a>
+      <a href="https://www.instagram.com/kunstquizart" class="social-link" aria-disabled="true">Instagram</a>
+      <a href="#" class="social-link" aria-disabled="true">TikTok</a>
+      <a href="https://github.com/egil10/kunstquiz" target="_blank" rel="noopener" class="footer-link">GitHub</a>
+      <a href="#" id="show-how-to-play-link" class="footer-link"></a>
+      <a href="#" id="language-toggle" class="footer-link">🇬🇧</a>
+    </div>
+  </footer>
+  <div id="artists-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="artists-title">
+    <div class="modal-content artist-list-modal">
+      <h2 id="artists-title"></h2>
+      <div id="artist-list-columns"></div>
+      <button id="close-artists-modal"></button>
+    </div>
+  </div>
+  <div id="gallery-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="gallery-title">
+    <div class="modal-content gallery-modal-content">
+      <h2 id="gallery-title"></h2>
+      <div id="gallery-collage"></div>
+      <button id="close-gallery-modal"></button>
+    </div>
+  </div>
+  <div id="how-to-play-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="how-to-play-title">
+    <div class="modal-content how-to-play-modal-content">
+      <h2 id="how-to-play-title"></h2>
+      <div id="how-to-play-content">
+        <!-- Content will be dynamically generated based on language -->
+      </div>
+      <button id="close-how-to-play-modal"></button>
+    </div>
+  </div>
+
+  <!-- Full Screen Painting Viewer -->
+  <div id="painting-viewer-modal" class="modal painting-viewer-modal" style="display:none;" role="dialog" aria-modal="true">
+    <div class="painting-viewer-content">
+      <img id="painting-viewer-image" class="painting-viewer-image" alt="Painting" />
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="assets/js/script.js"></script>
+</body>
+</html>
