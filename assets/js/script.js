@@ -6,6 +6,8 @@
 const ELO_CONFIG = {
   initialRating: 800,
   kFactor: 32,
+  kFactorCorrect: 50,  // Higher reward for correct answers
+  kFactorIncorrect: 20, // Lower penalty for incorrect answers
   difficultyMultiplier: 0.5
 };
 
@@ -62,11 +64,17 @@ function saveEloHistory() {
   localStorage.setItem('elo', gameState.elo.toString());
 }
 
-// Calculate ELO change
+// Calculate ELO change - more generous for correct, less punishing for incorrect
 function calculateEloChange(isCorrect, difficultyLevel = 1) {
-  const expectedScore = 1 / (1 + Math.pow(10, (difficultyLevel - (gameState.elo / 400))));
+  // Adjust expected score to account for quiz difficulty (harder quiz = lower expected)
+  const baseExpected = 0.25; // Assume quiz is hard (25% chance of correct answer)
+  const expectedScore = baseExpected;
   const actualScore = isCorrect ? 1 : 0;
-  const ratingChange = ELO_CONFIG.kFactor * (actualScore - expectedScore);
+  
+  // Use different kFactors for correct vs incorrect answers
+  const kFactor = isCorrect ? ELO_CONFIG.kFactorCorrect : ELO_CONFIG.kFactorIncorrect;
+  const ratingChange = kFactor * (actualScore - expectedScore);
+  
   return Math.round(ratingChange);
 }
 
@@ -96,59 +104,28 @@ function updateEloDisplay() {
 
 // Theme management
 function initTheme() {
-  const theme = localStorage.getItem('theme') || 'system';
+  // Load saved theme or default to light
+  let theme = localStorage.getItem('theme') || 'light';
+  
+  // If previously set to 'system', convert to actual theme
+  if (theme === 'system') {
+    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    localStorage.setItem('theme', theme);
+  }
+  
   setTheme(theme);
   
-  // Theme toggle button
-  document.getElementById('themeToggle')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleThemeMenu();
+  // Theme toggle button - switch between light and dark
+  document.getElementById('themeToggle')?.addEventListener('click', () => {
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
   });
-  
-  // Theme menu items
-  document.querySelectorAll('.theme-menu-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      const theme = e.currentTarget.dataset.theme;
-      setTheme(theme);
-      closeThemeMenu();
-    });
-  });
-  
-  // Close menu when clicking outside
-  document.addEventListener('click', () => closeThemeMenu());
-}
-
-function toggleThemeMenu() {
-  const menu = document.getElementById('themeMenu');
-  if (menu) {
-    menu.classList.toggle('hidden');
-  }
-}
-
-function closeThemeMenu() {
-  const menu = document.getElementById('themeMenu');
-  if (menu) {
-    menu.classList.add('hidden');
-  }
 }
 
 function setTheme(theme) {
   localStorage.setItem('theme', theme);
-  
-  if (theme === 'system') {
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    theme = systemTheme;
-  }
-  
   document.documentElement.setAttribute('data-theme', theme);
-  
-  // Update active menu item
-  document.querySelectorAll('.theme-menu-item').forEach(item => {
-    item.classList.remove('active');
-    if (item.dataset.theme === localStorage.getItem('theme')) {
-      item.classList.add('active');
-    }
-  });
   
   // Reinitialize icons
   lucide.createIcons();
@@ -579,8 +556,8 @@ function displayQuestion() {
       `);
     }
     
-    // Show country if NOT asking about country
-    if (type !== 'country') {
+    // Show country if NOT asking about country OR region (to avoid spoiling region question)
+    if (type !== 'country' && type !== 'region') {
       details.push(`
         <div class="detail-item">
           <span class="detail-label">
@@ -591,8 +568,8 @@ function displayQuestion() {
       `);
     }
     
-    // Show region if NOT asking about region
-    if (type !== 'region') {
+    // Show region if NOT asking about region OR country (to avoid spoiling country question)
+    if (type !== 'region' && type !== 'country') {
       details.push(`
         <div class="detail-item">
           <span class="detail-label">
