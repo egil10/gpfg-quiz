@@ -29,27 +29,27 @@
 }
 
 [data-theme="dark"] {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --header-bg: #1e40af;
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-tertiary: #141414;
+  --header-bg: #0a0a0a;
   --footer-bg: #0a0a0a;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #94a3b8;
-  --accent-primary: #60a5fa;
-  --accent-hover: #3b82f6;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --text-tertiary: #666666;
+  --accent-primary: #3b82f6;
+  --accent-hover: #2563eb;
   --accent-light: #1e3a8a;
   --success: #34d399;
   --success-light: #064e3b;
   --error: #f87171;
   --error-light: #7f1d1d;
-  --border: #334155;
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+  --border: #1a1a1a;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
   --header-text: #ffffff;
-  --footer-text: #94a3b8;
+  --footer-text: #888888;
 }
 
 [data-theme="black"] {
@@ -183,11 +183,11 @@ input {
 .header {
   background-color: var(--header-bg);
   color: var(--header-text);
-  padding: 1.5rem 2rem;
+  padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: var(--shadow-md);
+  border-bottom: 1px solid var(--border);
 }
 
 .header-left {
@@ -201,29 +201,27 @@ input {
 }
 
 .title {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0;
   cursor: pointer;
   transition: opacity 0.2s;
 }
 
 .title:hover {
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .title i {
-  width: 2rem;
-  height: 2rem;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .subtitle {
-  font-size: 0.875rem;
-  opacity: 0.9;
-  font-weight: 400;
+  display: none;
 }
 
 /* Theme Selector */
@@ -383,6 +381,37 @@ input {
   color: var(--text-primary);
 }
 
+/* ELO Display Header */
+.elo-display-header {
+  display: flex;
+  align-items: center;
+}
+
+.elo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--header-text);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.elo-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.elo-btn i {
+  width: 1rem;
+  height: 1rem;
+}
+
 /* ========================================================================
    Main Content
    ======================================================================== */
@@ -447,8 +476,7 @@ input {
   gap: 1rem;
   padding: 1.5rem;
   background-color: var(--bg-secondary);
-  border-radius: 1rem;
-  border: 1px solid var(--border);
+  border-radius: 0.5rem;
 }
 
 .stat-card i {
@@ -502,7 +530,6 @@ input {
 .btn-secondary {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
-  border: 1px solid var(--border);
 }
 
 .btn-large {
@@ -536,8 +563,7 @@ input {
   gap: 2rem;
   padding: 1rem;
   background-color: var(--bg-secondary);
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
+  border-radius: 0.5rem;
   flex-wrap: wrap;
 }
 
@@ -599,8 +625,8 @@ input {
   width: 100%;
   padding: 1rem 1.5rem;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border);
-  border-radius: 0.75rem;
+  border: none;
+  border-radius: 0.5rem;
   font-family: inherit;
   font-size: 1rem;
   font-weight: 500;
@@ -616,13 +642,11 @@ input {
 
 .option-btn.correct {
   background-color: var(--success-light);
-  border-color: var(--success);
   color: var(--success);
 }
 
 .option-btn.incorrect {
   background-color: var(--error-light);
-  border-color: var(--error);
   color: var(--error);
 }
 
@@ -634,10 +658,8 @@ input {
 /* Company Card */
 .company-card {
   background-color: var(--bg-secondary);
-  border-radius: 1rem;
+  border-radius: 0.5rem;
   padding: 2rem;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
 }
 
 .company-header {
@@ -645,8 +667,6 @@ input {
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border);
 }
 
 .company-header i {
@@ -659,6 +679,9 @@ input {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-primary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .company-details {
@@ -807,8 +830,8 @@ input {
 .year-checkbox-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  justify-content: center;
+  padding: 0.75rem;
   background-color: var(--bg-secondary);
   border-radius: 0.5rem;
   cursor: pointer;
@@ -820,10 +843,7 @@ input {
 }
 
 .year-checkbox-item input[type="checkbox"] {
-  width: 1.125rem;
-  height: 1.125rem;
-  cursor: pointer;
-  accent-color: var(--accent-primary);
+  display: none;
 }
 
 .year-checkbox-item label {
@@ -831,6 +851,14 @@ input {
   user-select: none;
   font-size: 0.875rem;
   color: var(--text-primary);
+}
+
+.year-checkbox-item:has(input:checked) {
+  background-color: var(--accent-primary);
+}
+
+.year-checkbox-item:has(input:checked) label {
+  color: white;
 }
 
 .modal-actions {
@@ -864,8 +892,8 @@ input {
 .filter-checkbox-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  justify-content: center;
+  padding: 0.75rem;
   background-color: var(--bg-secondary);
   border-radius: 0.5rem;
   cursor: pointer;
@@ -877,10 +905,7 @@ input {
 }
 
 .filter-checkbox-item input[type="checkbox"] {
-  width: 1.125rem;
-  height: 1.125rem;
-  cursor: pointer;
-  accent-color: var(--accent-primary);
+  display: none;
 }
 
 .filter-checkbox-item label {
@@ -890,6 +915,14 @@ input {
   color: var(--text-primary);
 }
 
+.filter-checkbox-item:has(input:checked) {
+  background-color: var(--accent-primary);
+}
+
+.filter-checkbox-item:has(input:checked) label {
+  color: white;
+}
+
 /* ========================================================================
    Footer
    ======================================================================== */
@@ -897,8 +930,9 @@ input {
 .footer {
   background-color: var(--footer-bg);
   color: var(--footer-text);
-  padding: 2rem;
+  padding: 1.5rem 2rem;
   margin-top: auto;
+  border-top: 1px solid var(--border);
 }
 
 .footer-content {
@@ -909,25 +943,32 @@ input {
   gap: 1.5rem;
 }
 
+.footer-left {
+  flex: 1;
+}
+
 .footer-left p {
-  margin-bottom: 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
   max-width: 600px;
 }
 
 .footer-tagline {
-  font-weight: 600;
-  font-size: 0.9375rem;
-  margin-bottom: 0.75rem !important;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  margin-bottom: 0.5rem !important;
   color: var(--footer-text);
 }
 
+.footer-description {
+  font-size: 0.6875rem;
+}
+
 .footer-disclaimer {
-  margin-top: 1rem;
-  font-size: 0.75rem;
-  opacity: 0.7;
-  font-style: italic;
+  margin-top: 0.75rem;
+  font-size: 0.625rem;
+  opacity: 0.6;
 }
 
 .footer-links {
@@ -938,57 +979,22 @@ input {
 
 .footer-left a,
 .footer-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
   color: var(--footer-text);
   text-decoration: none;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   transition: var(--transition);
 }
 
 .footer-left a:hover,
 .footer-link:hover {
-  opacity: 0.8;
-}
-
-.footer-left a i,
-.footer-link i {
-  width: 1rem;
-  height: 1rem;
+  opacity: 0.7;
 }
 
 .footer-right {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   align-items: center;
   flex-wrap: wrap;
-}
-
-.footer-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 0.5rem;
-  color: var(--footer-text);
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.footer-btn:active {
-  transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.footer-btn i {
-  width: 1rem;
-  height: 1rem;
 }
 
 /* ========================================================================

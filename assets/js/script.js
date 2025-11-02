@@ -81,6 +81,10 @@ function updateEloDisplay() {
   if (eloDisplay) {
     eloDisplay.textContent = gameState.elo;
   }
+  const eloDisplayHeader = document.getElementById('elo-display-header');
+  if (eloDisplayHeader) {
+    eloDisplayHeader.textContent = gameState.elo;
+  }
 }
 
 // Theme management
@@ -294,6 +298,14 @@ function resetGame() {
   }
   
   updateStatsDisplay();
+  updateTotalCompaniesCount();
+}
+
+function updateTotalCompaniesCount() {
+  const totalCompanies = document.getElementById('total-companies');
+  if (totalCompanies) {
+    totalCompanies.textContent = gameState.availableData.length.toLocaleString();
+  }
 }
 
 function filterByYears(data) {
@@ -625,7 +637,7 @@ function updateStatsDisplay() {
   
   if (correctCount) correctCount.textContent = gameState.correctCount;
   if (answeredCount) answeredCount.textContent = gameState.answeredCount;
-  if (totalCount) totalCount.textContent = gameState.totalCount;
+  if (totalCount) totalCount.textContent = gameState.availableData.length.toLocaleString();
 }
 
 function formatNumber(num) {
@@ -784,6 +796,13 @@ function showYearModal() {
           <input type="checkbox" id="year-${year}" value="${year}" ${isChecked ? 'checked' : ''}>
           <label for="year-${year}">${year}</label>
         `;
+        // Add click listener to entire item
+        item.addEventListener('click', (e) => {
+          if (e.target !== item.querySelector('input')) {
+            const checkbox = item.querySelector('input');
+            checkbox.checked = !checkbox.checked;
+          }
+        });
         checkboxes.appendChild(item);
       });
     }
@@ -864,6 +883,13 @@ function populateCustomFilter(containerId, values, prefix, selectedValues) {
         <input type="checkbox" id="${prefix}-${value}" value="${value}" ${isChecked ? 'checked' : ''}>
         <label for="${prefix}-${value}">${value}</label>
       `;
+      // Add click listener to entire item
+      item.addEventListener('click', (e) => {
+        if (e.target !== item.querySelector('input')) {
+          const checkbox = item.querySelector('input');
+          checkbox.checked = !checkbox.checked;
+        }
+      });
       container.appendChild(item);
     });
   }
