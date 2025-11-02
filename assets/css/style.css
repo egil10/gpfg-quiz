@@ -32,8 +32,8 @@
   --bg-primary: #000000;
   --bg-secondary: #0a0a0a;
   --bg-tertiary: #141414;
-  --header-bg: #001538;
-  --footer-bg: #001538;
+  --header-bg: #000000;
+  --footer-bg: #000000;
   --text-primary: #ffffff;
   --text-secondary: #888888;
   --text-tertiary: #666666;
@@ -56,8 +56,8 @@
   --bg-primary: #000000;
   --bg-secondary: #0a0a0a;
   --bg-tertiary: #1a1a1a;
-  --header-bg: #001538;
-  --footer-bg: #001538;
+  --header-bg: #000000;
+  --footer-bg: #000000;
   --text-primary: #e5e5e5;
   --text-secondary: #a3a3a3;
   --text-tertiary: #737373;
@@ -248,11 +248,14 @@ input {
 /* Theme Selector */
 .theme-selector {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .theme-btn {
   width: 2.5rem;
   height: 2.5rem;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -260,6 +263,17 @@ input {
   background: transparent;
   cursor: pointer;
   transition: var(--transition);
+  color: inherit;
+  padding: 0;
+  margin: 0;
+}
+
+[data-theme="light"] .theme-btn {
+  color: #000000;
+}
+
+[data-theme="dark"] .theme-btn {
+  color: #ffffff;
 }
 
 .theme-btn:hover {
@@ -276,12 +290,12 @@ input {
 
 [data-theme="light"] .theme-icon-light {
   display: block;
-  color: #000000;
+  color: #000000 !important;
 }
 
 [data-theme="dark"] .theme-icon-dark {
   display: block;
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .theme-icon-system {
@@ -313,11 +327,18 @@ input {
   padding: 0.75rem 1rem;
   border: none;
   background: none;
-  color: var(--text-primary);
   font-family: inherit;
   font-size: 1rem;
   cursor: pointer;
   transition: var(--transition);
+}
+
+[data-theme="light"] .theme-menu-item {
+  color: #000000;
+}
+
+[data-theme="dark"] .theme-menu-item {
+  color: #ffffff;
 }
 
 .theme-menu-item:hover {
@@ -330,17 +351,32 @@ input {
 }
 
 [data-theme="light"] .theme-menu-item svg {
-  color: #000000;
+  color: #000000 !important;
 }
 
 [data-theme="dark"] .theme-menu-item svg {
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .theme-menu-item.active {
   background-color: var(--accent-light);
-  color: var(--accent-primary);
   font-weight: 600;
+}
+
+[data-theme="light"] .theme-menu-item.active {
+  color: #000000;
+}
+
+[data-theme="light"] .theme-menu-item.active svg {
+  color: #000000 !important;
+}
+
+[data-theme="dark"] .theme-menu-item.active {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .theme-menu-item.active svg {
+  color: #ffffff !important;
 }
 
 /* Filter Controls */
@@ -356,6 +392,7 @@ input {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
+  min-height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.1);
@@ -401,6 +438,7 @@ input {
 /* Select */
 .select {
   padding: 0.5rem 1rem;
+  min-height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.1);
@@ -436,6 +474,7 @@ input {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
+  min-height: 44px;
   border: none;
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.1);
@@ -662,6 +701,15 @@ input {
   text-align: left;
 }
 
+[data-theme="light"] .option-btn {
+  background-color: #001538;
+  color: #ffffff;
+}
+
+[data-theme="light"] .option-btn:hover:not(:disabled) {
+  background-color: #002550;
+}
+
 .option-btn:active {
   transform: scale(0.98);
 }
@@ -837,6 +885,8 @@ input {
   margin-bottom: 2rem;
   max-height: 400px;
   overflow-y: auto;
+  contain: layout style;
+  will-change: contents;
 }
 
 .year-checkbox-item {
@@ -847,7 +897,8 @@ input {
   background-color: var(--bg-secondary);
   border-radius: 0.5rem;
   cursor: pointer;
-  transition: var(--transition);
+  transition: background-color 0.1s ease;
+  contain: layout style;
 }
 
 .year-checkbox-item:hover {

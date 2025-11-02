@@ -480,27 +480,37 @@ function generateOptions(correctCompany, type) {
   const correctAnswer = getCorrectAnswer(correctCompany, type);
   const options = [correctAnswer];
   
-  // Get unique values for this type
-  const uniqueValues = new Set();
-  gameState.data.forEach(company => {
-    const value = getCorrectAnswer(company, type);
-    if (value && value !== correctAnswer) {
-      uniqueValues.add(value);
-    }
-  });
+  // Use cached filter options to ensure we only get valid values for this type
+  let validValues = [];
+  switch (type) {
+    case 'country':
+      validValues = [...gameState.filterOptions.countries];
+      break;
+    case 'industry':
+      validValues = [...gameState.filterOptions.industries];
+      break;
+    case 'region':
+      validValues = [...gameState.filterOptions.regions];
+      break;
+    case 'year':
+      validValues = gameState.filterOptions.years.map(y => y.toString());
+      break;
+    default:
+      validValues = [...gameState.filterOptions.countries];
+  }
   
-  const uniqueArray = Array.from(uniqueValues);
+  // Filter out the correct answer and get random options
+  const otherValues = validValues.filter(v => v !== correctAnswer);
   
-  // Add 3 more random options
-  while (options.length < 4 && uniqueArray.length > 0) {
-    const randomIndex = Math.floor(Math.random() * uniqueArray.length);
-    const randomValue = uniqueArray.splice(randomIndex, 1)[0];
-    if (!options.includes(randomValue)) {
-      options.push(randomValue);
+  // Shuffle and take up to 3 more options
+  const shuffled = shuffleArray(otherValues);
+  for (let i = 0; i < Math.min(3, shuffled.length) && options.length < 4; i++) {
+    if (!options.includes(shuffled[i])) {
+      options.push(shuffled[i]);
     }
   }
   
-  // Shuffle options
+  // Shuffle final options
   return shuffleArray(options);
 }
 
@@ -518,7 +528,7 @@ function getQuestionText(type) {
     country: 'Which country is this company from?',
     industry: 'Which industry does this company belong to?',
     region: 'Which region is this company from?',
-    year: 'In which year was this company in the portfolio?'
+    year: 'What year does this portfolio entry represent?'
   };
   return texts[type] || 'Which country is this company from?';
 }
@@ -838,33 +848,56 @@ function drawEloChart() {
   lucide.createIcons();
 }
 
-// Year Filter Functions
+// Year Filter Functions - Cached checkboxes for performance
+let yearCheckboxesCache = null;
+let yearCheckboxElements = null; // Cache the actual checkbox elements
+
+function initializeYearCheckboxes() {
+  const checkboxesContainer = document.getElementById('year-checkboxes');
+  if (!checkboxesContainer || yearCheckboxesCache !== null) return;
+  
+  const years = gameState.filterOptions.years;
+  if (years.length === 0) return;
+  
+  const fragment = document.createDocumentFragment();
+  const checkboxMap = new Map(); // Map year to checkbox element
+  
+  years.forEach(year => {
+    const item = document.createElement('div');
+    item.className = 'year-checkbox-item';
+    item.innerHTML = `
+      <input type="checkbox" id="year-${year}" value="${year}">
+      <label for="year-${year}">${year}</label>
+    `;
+    fragment.appendChild(item);
+    // Cache the checkbox element
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    checkboxMap.set(year, checkbox);
+  });
+  checkboxesContainer.appendChild(fragment);
+  yearCheckboxesCache = true;
+  yearCheckboxElements = checkboxMap; // Store the map for fast lookups
+}
+
 function showYearModal() {
   const modal = document.getElementById('year-modal');
   if (modal) {
-    modal.classList.remove('hidden');
-    
-    // Use cached years
-    const years = gameState.filterOptions.years;
-    
-    // Create checkboxes
-    const checkboxes = document.getElementById('year-checkboxes');
-    if (checkboxes) {
-      checkboxes.innerHTML = '';
-      // Use DocumentFragment for better performance
-      const fragment = document.createDocumentFragment();
-      years.forEach(year => {
-        const item = document.createElement('div');
-        item.className = 'year-checkbox-item';
-        const isChecked = gameState.selectedYears.length === 0 || gameState.selectedYears.includes(year);
-        item.innerHTML = `
-          <input type="checkbox" id="year-${year}" value="${year}" ${isChecked ? 'checked' : ''}>
-          <label for="year-${year}">${year}</label>
-        `;
-        fragment.appendChild(item);
-      });
-      checkboxes.appendChild(fragment);
+    // Initialize checkboxes only once (after data is loaded)
+    if (yearCheckboxesCache === null && gameState.filterOptions.years.length > 0) {
+      initializeYearCheckboxes();
     }
+    
+    // Update checked states efficiently using cached elements
+    if (yearCheckboxElements) {
+      const allSelected = gameState.selectedYears.length === 0;
+      const selectedSet = allSelected ? null : new Set(gameState.selectedYears);
+      
+      yearCheckboxElements.forEach((checkbox, year) => {
+        checkbox.checked = allSelected || (selectedSet && selectedSet.has(year));
+      });
+    }
+    
+    modal.classList.remove('hidden');
   }
 }
 
@@ -876,20 +909,35 @@ function hideYearModal() {
 }
 
 function selectAllYears() {
-  document.querySelectorAll('#year-checkboxes input[type="checkbox"]').forEach(cb => {
-    cb.checked = true;
-  });
+  if (yearCheckboxElements) {
+    yearCheckboxElements.forEach(checkbox => {
+      checkbox.checked = true;
+    });
+  }
 }
 
 function deselectAllYears() {
-  document.querySelectorAll('#year-checkboxes input[type="checkbox"]').forEach(cb => {
-    cb.checked = false;
-  });
+  if (yearCheckboxElements) {
+    yearCheckboxElements.forEach(checkbox => {
+      checkbox.checked = false;
+    });
+  }
 }
 
 function applyYearFilter() {
-  const checkboxes = document.querySelectorAll('#year-checkboxes input[type="checkbox"]:checked');
-  gameState.selectedYears = Array.from(checkboxes).map(cb => parseInt(cb.value));
+  // Use cached elements for faster lookup
+  if (yearCheckboxElements) {
+    gameState.selectedYears = [];
+    yearCheckboxElements.forEach((checkbox, year) => {
+      if (checkbox.checked) {
+        gameState.selectedYears.push(year);
+      }
+    });
+  } else {
+    // Fallback to querySelectorAll if cache not available
+    const checkboxes = document.querySelectorAll('#year-checkboxes input[type="checkbox"]:checked');
+    gameState.selectedYears = Array.from(checkboxes).map(cb => parseInt(cb.value));
+  }
   
   // Update button text
   const filterText = document.getElementById('year-filter-text');
