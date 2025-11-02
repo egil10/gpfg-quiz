@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NBIM Quiz - Norwegian Oil Fund Holdings Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>GPFG Quiz - Norwegian Oil Fund Holdings Quiz</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,39 +22,79 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-content">
+      <i data-lucide="trending-up" class="loading-icon"></i>
+      <p>Loading portfolio data...</p>
+    </div>
+  </div>
+
   <div class="container">
     <!-- Header -->
     <header class="header">
       <div class="header-left">
-        <h1 class="title">
+        <h1 class="title" id="title-clickable">
           <i data-lucide="brain-circuit"></i>
-          NBIM Quiz
+          GPFG Quiz
         </h1>
         <p class="subtitle">Norwegian Oil Fund Holdings Challenge</p>
       </div>
       
       <div class="header-right">
-        <!-- Theme Selector -->
-        <div class="theme-selector">
-          <button id="theme-light" class="theme-btn active" title="Light mode">
-            <i data-lucide="sun"></i>
+        <!-- Filter Controls -->
+        <div class="filter-controls">
+          <!-- Year Filter Button -->
+          <button id="year-filter-btn" class="btn-filter" title="Filter by year">
+            <i data-lucide="calendar"></i>
+            <span id="year-filter-text">All Years</span>
           </button>
-          <button id="theme-dark" class="theme-btn" title="Dark mode">
-            <i data-lucide="moon"></i>
-          </button>
-          <button id="theme-system" class="theme-btn" title="System mode">
-            <i data-lucide="monitor"></i>
+          
+          <!-- Category Selector -->
+          <select id="category-select" class="select">
+            <option value="all">All Categories</option>
+            <option value="country">Country Quiz</option>
+            <option value="industry">Industry Quiz</option>
+            <option value="region">Region Quiz</option>
+            <option value="year">Year Quiz</option>
+            <option value="custom">Custom Quiz</option>
+          </select>
+          
+          <!-- Apply Changes Button -->
+          <button id="apply-settings-btn" class="btn-filter btn-apply">
+            <i data-lucide="check"></i>
+            Apply
           </button>
         </div>
         
-        <!-- Category Selector -->
-        <select id="category-select" class="select">
-          <option value="all">All Categories</option>
-          <option value="country">Country Quiz</option>
-          <option value="industry">Industry Quiz</option>
-          <option value="region">Region Quiz</option>
-          <option value="year">Year Quiz</option>
-        </select>
+        <!-- Theme Selector -->
+        <div class="theme-selector">
+          <button id="themeToggle" class="theme-btn" aria-label="Theme" aria-haspopup="true" aria-expanded="false">
+            <span class="theme-icon-light">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+            </span>
+            <span class="theme-icon-dark">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"></path></svg>
+            </span>
+            <span class="theme-icon-system">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"></rect><line x1="8" x2="16" y1="21" y2="21"></line><line x1="12" x2="12" y1="17" y2="21"></line></svg>
+            </span>
+          </button>
+          <div id="themeMenu" class="theme-menu hidden">
+            <button class="theme-menu-item active" data-theme="light">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+              <span>Light</span>
+            </button>
+            <button class="theme-menu-item" data-theme="dark">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"></path></svg>
+              <span>Dark</span>
+            </button>
+            <button class="theme-menu-item" data-theme="system">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"></rect><line x1="8" x2="16" y1="21" y2="21"></line><line x1="12" x2="12" y1="17" y2="21"></line></svg>
+              <span>System</span>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -94,97 +139,181 @@
       <!-- Quiz Screen -->
       <div id="quiz-screen" class="quiz-screen hidden">
         <div class="quiz-content">
-          <!-- Score Display -->
-          <div class="quiz-header">
-            <div class="score-info">
-              <span class="score-text">
-                Question <span id="current-question">0</span> / <span id="total-questions">10</span>
-              </span>
-              <span class="score-text">
-                Score: <span id="current-score">0</span>
-              </span>
+          <!-- Stats Bar -->
+          <div class="quiz-stats-bar">
+            <div class="stat-item">
+              <i data-lucide="check-circle"></i>
+              <span>Correct: <strong id="correct-count">0</strong></span>
             </div>
-            <div class="streak-display">
-              <i data-lucide="flame"></i>
-              <span>Streak: <span id="current-streak">0</span></span>
+            <div class="stat-item">
+              <i data-lucide="help-circle"></i>
+              <span>Answered: <strong id="answered-count">0</strong></span>
             </div>
-          </div>
-
-          <!-- Company Info -->
-          <div class="company-card">
-            <div class="company-header">
-              <i data-lucide="briefcase"></i>
-              <h2 id="company-name" class="company-name">Loading...</h2>
-            </div>
-            <div class="company-details" id="company-details">
-              <!-- Company details will be inserted here -->
-            </div>
-          </div>
-
-          <!-- Question -->
-          <div class="question-section">
-            <p id="question-text" class="question-text">Which country is this company from?</p>
-            
-            <!-- Options -->
-            <div id="options-container" class="options-container">
-              <!-- Options will be inserted here -->
-            </div>
-          </div>
-
-          <!-- Feedback -->
-          <div id="feedback" class="feedback"></div>
-        </div>
-      </div>
-
-      <!-- Results Screen -->
-      <div id="results-screen" class="results-screen hidden">
-        <div class="results-content">
-          <div class="results-header">
-            <i data-lucide="award" class="results-icon"></i>
-            <h2>Quiz Complete!</h2>
-          </div>
-          
-          <div class="results-stats">
-            <div class="result-stat">
+            <div class="stat-item">
               <i data-lucide="target"></i>
-              <span class="result-value" id="final-score">0/10</span>
-              <span class="result-label">Score</span>
+              <span>Total: <strong id="total-count">0</strong></span>
             </div>
-            <div class="result-stat">
-              <i data-lucide="percent"></i>
-              <span class="result-value" id="final-percentage">0%</span>
-              <span class="result-label">Accuracy</span>
-            </div>
-            <div class="result-stat">
-              <i data-lucide="flame"></i>
-              <span class="result-value" id="final-streak">0</span>
-              <span class="result-label">Best Streak</span>
+            <div class="stat-item">
+              <i data-lucide="trending-up"></i>
+              <span>ELO: <strong id="elo-display">800</strong></span>
             </div>
           </div>
 
-          <div id="results-message" class="results-message"></div>
+          <!-- Side-by-side layout -->
+          <div class="quiz-layout">
+            <!-- Left: Question & Options -->
+            <div class="quiz-left">
+              <div class="question-section">
+                <p id="question-text" class="question-text">Which country is this company from?</p>
+                
+                <!-- Options -->
+                <div id="options-container" class="options-container">
+                  <!-- Options will be inserted here -->
+                </div>
+              </div>
+            </div>
 
-          <div class="results-actions">
-            <button id="play-again-btn" class="btn btn-primary">
-              <i data-lucide="refresh-cw"></i>
-              Play Again
-            </button>
-            <button id="back-home-btn" class="btn btn-secondary">
-              <i data-lucide="home"></i>
-              Back Home
-            </button>
+            <!-- Right: Company Info -->
+            <div class="quiz-right">
+              <div class="company-card">
+                <div class="company-header">
+                  <i data-lucide="briefcase"></i>
+                  <h2 id="company-name" class="company-name">Loading...</h2>
+                </div>
+                <div class="company-details" id="company-details">
+                  <!-- Company details will be inserted here -->
+                </div>
+              </div>
+
+              <!-- Feedback -->
+              <div id="feedback" class="feedback"></div>
+            </div>
           </div>
         </div>
       </div>
     </main>
 
+    <!-- ELO Graph Modal -->
+    <div id="elo-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>ELO Ranking History</h2>
+          <button class="modal-close" id="close-elo-modal">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <canvas id="elo-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Year Filter Modal -->
+    <div id="year-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Filter by Year</h2>
+          <button class="modal-close" id="close-year-modal">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-description">Select one or more years to include in the quiz:</p>
+          <div id="year-checkboxes" class="year-checkboxes">
+            <!-- Year checkboxes will be inserted here -->
+          </div>
+          <div class="modal-actions">
+            <button id="select-all-years" class="btn btn-secondary">Select All</button>
+            <button id="deselect-all-years" class="btn btn-secondary">Deselect All</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Quiz Modal -->
+    <div id="custom-quiz-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Custom Quiz Builder</h2>
+          <button class="modal-close" id="close-custom-quiz-modal">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-description">Select multiple filters to create your perfect quiz:</p>
+          
+          <!-- Regions -->
+          <div class="custom-filter-section">
+            <h3 class="filter-section-title">Regions</h3>
+            <div class="filter-checkboxes" id="region-checkboxes">
+              <!-- Region checkboxes will be inserted here -->
+            </div>
+          </div>
+
+          <!-- Countries -->
+          <div class="custom-filter-section">
+            <h3 class="filter-section-title">Countries</h3>
+            <div class="filter-checkboxes" id="country-checkboxes">
+              <!-- Country checkboxes will be inserted here -->
+            </div>
+          </div>
+
+          <!-- Industries -->
+          <div class="custom-filter-section">
+            <h3 class="filter-section-title">Industries</h3>
+            <div class="filter-checkboxes" id="industry-checkboxes">
+              <!-- Industry checkboxes will be inserted here -->
+            </div>
+          </div>
+
+          <!-- Years -->
+          <div class="custom-filter-section">
+            <h3 class="filter-section-title">Years</h3>
+            <div class="filter-checkboxes" id="year-checkboxes-custom">
+              <!-- Year checkboxes will be inserted here -->
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button id="clear-all-custom-filters" class="btn btn-secondary">Clear All</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
-      <p>Data from the Norwegian Oil Fund (NBIM)</p>
-      <a href="https://www.nbim.no" target="_blank" rel="noopener noreferrer">
-        Learn more about NBIM
-        <i data-lucide="external-link"></i>
-      </a>
+      <div class="footer-content">
+        <div class="footer-left">
+          <p class="footer-tagline">Learn everything about the world's biggest government pension fund</p>
+          <p>The Government Pension Fund Global (GPFG) is Norway's sovereign wealth fund, managed by Norges Bank Investment Management (NBIM).</p>
+          <div class="footer-links">
+            <a href="https://www.regjeringen.no/en/topics/the-economy/the-government-pension-fund/id1441/" target="_blank" rel="noopener noreferrer">
+              About GPFG
+              <i data-lucide="external-link"></i>
+            </a>
+            <a href="https://www.nbim.no/en/investments/all-investments/" target="_blank" rel="noopener noreferrer">
+              All Investments
+              <i data-lucide="external-link"></i>
+            </a>
+          </div>
+          <p class="footer-disclaimer">This quiz uses publicly available data for informational and educational purposes only. It is not affiliated with or endorsed by NBIM or the Government of Norway.</p>
+        </div>
+        <div class="footer-right">
+          <button id="show-elo-btn" class="footer-btn">
+            <i data-lucide="trending-up"></i>
+            View ELO Graph
+          </button>
+          <a href="https://egil10.github.io/gpfg-quiz/" class="footer-link">
+            <i data-lucide="globe"></i>
+            Online Version
+          </a>
+          <a href="https://github.com/egil10/gpfg-quiz" target="_blank" rel="noopener noreferrer" class="footer-link">
+            <i data-lucide="github"></i>
+            GitHub
+          </a>
+        </div>
+      </div>
     </footer>
   </div>
 

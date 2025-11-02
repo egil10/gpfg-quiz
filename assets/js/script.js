@@ -1,35 +1,124 @@
 // ======================================================================
-// NBIM Quiz - Game Logic
+// NBIM Quiz - Game Logic with ELO Ranking
 // ======================================================================
+
+// ELO Configuration
+const ELO_CONFIG = {
+  initialRating: 800,
+  kFactor: 32,
+  difficultyMultiplier: 0.5
+};
 
 // Game state
 const gameState = {
   data: [],
   filteredData: [],
-  currentQuestion: 0,
-  score: 0,
-  streak: 0,
-  maxStreak: 0,
-  totalQuestions: 10,
-  questions: [],
-  currentCategory: 'all'
+  currentQuestion: null,
+  correctCount: 0,
+  answeredCount: 0,
+  totalCount: 0,
+  currentCategory: 'all',
+  selectedYears: [], // Array of selected years, empty = all years
+  customFilters: {
+    regions: [],
+    countries: [],
+    industries: [],
+    years: []
+  },
+  eloHistory: [],
+  elo: ELO_CONFIG.initialRating,
+  availableData: []
 };
+
+// Load ELO history from localStorage
+function loadEloHistory() {
+  const stored = localStorage.getItem('eloHistory');
+  const storedElo = localStorage.getItem('elo');
+  
+  if (stored) {
+    gameState.eloHistory = JSON.parse(stored);
+  }
+  
+  if (storedElo) {
+    gameState.elo = parseInt(storedElo);
+  } else {
+    gameState.elo = ELO_CONFIG.initialRating;
+    gameState.eloHistory = [{ question: 0, elo: ELO_CONFIG.initialRating }];
+  }
+  
+  updateEloDisplay();
+}
+
+// Save ELO history to localStorage
+function saveEloHistory() {
+  localStorage.setItem('eloHistory', JSON.stringify(gameState.eloHistory));
+  localStorage.setItem('elo', gameState.elo.toString());
+}
+
+// Calculate ELO change
+function calculateEloChange(isCorrect, difficultyLevel = 1) {
+  const expectedScore = 1 / (1 + Math.pow(10, (difficultyLevel - (gameState.elo / 400))));
+  const actualScore = isCorrect ? 1 : 0;
+  const ratingChange = ELO_CONFIG.kFactor * (actualScore - expectedScore);
+  return Math.round(ratingChange);
+}
+
+// Update ELO after answer
+function updateElo(isCorrect) {
+  const eloChange = calculateEloChange(isCorrect);
+  gameState.elo += eloChange;
+  gameState.eloHistory.push({
+    question: gameState.totalCount,
+    elo: gameState.elo
+  });
+  saveEloHistory();
+  updateEloDisplay();
+}
+
+// Update ELO display
+function updateEloDisplay() {
+  const eloDisplay = document.getElementById('elo-display');
+  if (eloDisplay) {
+    eloDisplay.textContent = gameState.elo;
+  }
+}
 
 // Theme management
 function initTheme() {
   const theme = localStorage.getItem('theme') || 'system';
   setTheme(theme);
   
-  // Set active theme button
-  document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.classList.remove('active');
+  // Theme toggle button
+  document.getElementById('themeToggle')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleThemeMenu();
   });
-  document.getElementById(`theme-${theme}`).classList.add('active');
   
-  // Add event listeners
-  document.getElementById('theme-light')?.addEventListener('click', () => setTheme('light'));
-  document.getElementById('theme-dark')?.addEventListener('click', () => setTheme('dark'));
-  document.getElementById('theme-system')?.addEventListener('click', () => setTheme('system'));
+  // Theme menu items
+  document.querySelectorAll('.theme-menu-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const theme = e.currentTarget.dataset.theme;
+      setTheme(theme);
+      closeThemeMenu();
+    });
+  });
+  
+  // Close menu when clicking outside
+  document.addEventListener('click', () => closeThemeMenu());
+}
+
+function toggleThemeMenu() {
+  const menu = document.getElementById('themeMenu');
+  if (menu) {
+    menu.classList.toggle('hidden');
+  }
+}
+
+function closeThemeMenu() {
+  const menu = document.getElementById('themeMenu');
+  if (menu) {
+    menu.classList.add('hidden');
+  }
 }
 
 function setTheme(theme) {
@@ -42,14 +131,15 @@ function setTheme(theme) {
   
   document.documentElement.setAttribute('data-theme', theme);
   
-  // Update active button
-  document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.classList.remove('active');
+  // Update active menu item
+  document.querySelectorAll('.theme-menu-item').forEach(item => {
+    item.classList.remove('active');
+    if (item.dataset.theme === localStorage.getItem('theme')) {
+      item.classList.add('active');
+    }
   });
-  const btn = document.getElementById(`theme-${localStorage.getItem('theme')}`);
-  if (btn) btn.classList.add('active');
   
-  // Reinitialize icons with new colors
+  // Reinitialize icons
   lucide.createIcons();
 }
 
@@ -73,20 +163,35 @@ async function loadData() {
     }));
     
     gameState.filteredData = gameState.data;
+    gameState.availableData = [...gameState.data];
     
     // Update stats
-    document.getElementById('total-companies').textContent = 
-      gameState.data.length.toLocaleString();
+    const totalCompanies = document.getElementById('total-companies');
+    if (totalCompanies) {
+      totalCompanies.textContent = gameState.data.length.toLocaleString();
+    }
     
     console.log(`Loaded ${gameState.data.length} companies`);
+    
+    // Hide loading screen
+    hideLoadingScreen();
   } catch (error) {
     console.error('Error loading data:', error);
     showError('Failed to load quiz data. Please refresh the page.');
+    hideLoadingScreen();
+  }
+}
+
+function hideLoadingScreen() {
+  const loadingScreen = document.getElementById('loading-screen');
+  if (loadingScreen) {
+    loadingScreen.classList.add('hidden');
   }
 }
 
 // Initialize game
 function initGame() {
+  loadEloHistory();
   initTheme();
   setupEventListeners();
   loadData();
@@ -97,49 +202,152 @@ function setupEventListeners() {
   // Start button
   document.getElementById('start-btn')?.addEventListener('click', startQuiz);
   
-  // Category selector
-  document.getElementById('category-select')?.addEventListener('change', (e) => {
-    gameState.currentCategory = e.target.value;
+  // Apply settings button
+  document.getElementById('apply-settings-btn')?.addEventListener('click', () => {
+    applySettings();
   });
   
-  // Play again
-  document.getElementById('play-again-btn')?.addEventListener('click', () => {
-    startQuiz();
+  // Year filter button
+  document.getElementById('year-filter-btn')?.addEventListener('click', () => {
+    showYearModal();
   });
   
-  // Back home
-  document.getElementById('back-home-btn')?.addEventListener('click', () => {
-    showWelcomeScreen();
-    resetGame();
+  // Year modal
+  document.getElementById('close-year-modal')?.addEventListener('click', () => {
+    applyYearFilter();
   });
+  
+  document.getElementById('select-all-years')?.addEventListener('click', () => {
+    selectAllYears();
+  });
+  
+  document.getElementById('deselect-all-years')?.addEventListener('click', () => {
+    deselectAllYears();
+  });
+  
+  // Header title click
+  document.getElementById('title-clickable')?.addEventListener('click', () => {
+    window.location.reload();
+  });
+  
+  // ELO modal
+  document.getElementById('show-elo-btn')?.addEventListener('click', () => {
+    showEloModal();
+  });
+  
+  document.getElementById('close-elo-modal')?.addEventListener('click', () => {
+    hideEloModal();
+  });
+
+  // Custom quiz modal
+  document.getElementById('close-custom-quiz-modal')?.addEventListener('click', () => {
+    // Don't capture filters here - let the Apply button do it
+    hideCustomQuizModal();
+  });
+
+  document.getElementById('clear-all-custom-filters')?.addEventListener('click', () => {
+    clearCustomFilters();
+  });
+
+  // Category selector change - open custom modal if custom selected
+  const categorySelect = document.getElementById('category-select');
+  if (categorySelect) {
+    categorySelect.addEventListener('change', (e) => {
+      if (e.target.value === 'custom') {
+        showCustomQuizModal();
+      } else {
+        hideCustomQuizModal();
+      }
+    });
+  }
 }
 
 // Show screens
 function showWelcomeScreen() {
-  document.getElementById('welcome-screen').classList.remove('hidden');
-  document.getElementById('quiz-screen').classList.add('hidden');
-  document.getElementById('results-screen').classList.add('hidden');
+  const welcomeScreen = document.getElementById('welcome-screen');
+  const quizScreen = document.getElementById('quiz-screen');
+  
+  if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+  if (quizScreen) quizScreen.classList.add('hidden');
 }
 
 function showQuizScreen() {
-  document.getElementById('welcome-screen').classList.add('hidden');
-  document.getElementById('quiz-screen').classList.remove('hidden');
-  document.getElementById('results-screen').classList.add('hidden');
-}
-
-function showResultsScreen() {
-  document.getElementById('welcome-screen').classList.add('hidden');
-  document.getElementById('quiz-screen').classList.add('hidden');
-  document.getElementById('results-screen').classList.remove('hidden');
+  const welcomeScreen = document.getElementById('welcome-screen');
+  const quizScreen = document.getElementById('quiz-screen');
+  
+  if (welcomeScreen) welcomeScreen.classList.add('hidden');
+  if (quizScreen) quizScreen.classList.remove('hidden');
 }
 
 // Game functions
 function resetGame() {
-  gameState.currentQuestion = 0;
-  gameState.score = 0;
-  gameState.streak = 0;
-  gameState.maxStreak = 0;
-  gameState.questions = [];
+  gameState.correctCount = 0;
+  gameState.answeredCount = 0;
+  gameState.totalCount = 0;
+  gameState.currentQuestion = null;
+  
+  // Apply filters based on current category
+  if (gameState.currentCategory === 'custom') {
+    gameState.availableData = applyCustomFilters([...gameState.data]);
+  } else {
+    gameState.availableData = filterByYears([...gameState.data]);
+  }
+  
+  updateStatsDisplay();
+}
+
+function filterByYears(data) {
+  if (gameState.selectedYears.length === 0) {
+    return data;
+  }
+  return data.filter(company => gameState.selectedYears.includes(company.YEAR));
+}
+
+function applyCustomFilters(data) {
+  let filtered = [...data];
+  
+  // Filter by regions
+  if (gameState.customFilters.regions.length > 0) {
+    filtered = filtered.filter(company => gameState.customFilters.regions.includes(company.REGION));
+  }
+  
+  // Filter by countries
+  if (gameState.customFilters.countries.length > 0) {
+    filtered = filtered.filter(company => gameState.customFilters.countries.includes(company.COUNRTY || company.COUNTRY));
+  }
+  
+  // Filter by industries
+  if (gameState.customFilters.industries.length > 0) {
+    filtered = filtered.filter(company => gameState.customFilters.industries.includes(company.INDUSTRY));
+  }
+  
+  // Filter by years
+  if (gameState.customFilters.years.length > 0) {
+    filtered = filtered.filter(company => gameState.customFilters.years.includes(company.YEAR));
+  }
+  
+  return filtered;
+}
+
+function applySettings() {
+  // Get category from dropdown
+  const categorySelect = document.getElementById('category-select');
+  if (categorySelect) {
+    gameState.currentCategory = categorySelect.value;
+    
+    // If custom quiz, capture custom filter selections
+    if (gameState.currentCategory === 'custom') {
+      captureCustomFilters();
+    }
+  }
+  
+  // Reset progress and go back to welcome screen
+  resetGame();
+  showWelcomeScreen();
+  
+  // Close modals
+  hideYearModal();
+  hideCustomQuizModal();
 }
 
 function startQuiz() {
@@ -149,42 +357,39 @@ function startQuiz() {
   }
   
   resetGame();
-  generateQuestions();
+  generateNextQuestion();
   showQuizScreen();
   displayQuestion();
 }
 
-function generateQuestions() {
-  gameState.questions = [];
-  const availableData = [...gameState.data];
-  
-  for (let i = 0; i < gameState.totalQuestions; i++) {
-    if (availableData.length === 0) break;
-    
-    // Pick random company
-    const randomIndex = Math.floor(Math.random() * availableData.length);
-    const company = availableData.splice(randomIndex, 1)[0];
-    
-    // Determine question type
-    let questionType = gameState.currentCategory;
-    if (questionType === 'all') {
-      const types = ['country', 'industry', 'region', 'year'];
-      questionType = types[Math.floor(Math.random() * types.length)];
-    }
-    
-    // Get correct answer
-    const correctAnswer = getCorrectAnswer(company, questionType);
-    
-    // Generate options
-    const options = generateOptions(company, questionType);
-    
-    gameState.questions.push({
-      company,
-      type: questionType,
-      correctAnswer,
-      options
-    });
+function generateNextQuestion() {
+  if (gameState.availableData.length === 0) {
+    gameState.availableData = filterByYears([...gameState.data]);
   }
+  
+  // Pick random company
+  const randomIndex = Math.floor(Math.random() * gameState.availableData.length);
+  const company = gameState.availableData[randomIndex];
+  
+  // Determine question type
+  let questionType = gameState.currentCategory;
+  if (questionType === 'all') {
+    const types = ['country', 'industry', 'region', 'year'];
+    questionType = types[Math.floor(Math.random() * types.length)];
+  }
+  
+  // Get correct answer
+  const correctAnswer = getCorrectAnswer(company, questionType);
+  
+  // Generate options
+  const options = generateOptions(company, questionType);
+  
+  gameState.currentQuestion = {
+    company,
+    type: questionType,
+    correctAnswer,
+    options
+  };
 }
 
 function getCorrectAnswer(company, type) {
@@ -250,64 +455,117 @@ function getQuestionText(type) {
 }
 
 function displayQuestion() {
-  if (gameState.currentQuestion >= gameState.questions.length) {
-    endGame();
-    return;
-  }
-  
-  const question = gameState.questions[gameState.currentQuestion];
-  
-  // Update header
-  document.getElementById('current-question').textContent = gameState.currentQuestion + 1;
-  document.getElementById('total-questions').textContent = gameState.totalQuestions;
-  document.getElementById('current-score').textContent = gameState.score;
-  document.getElementById('current-streak').textContent = gameState.streak;
+  const question = gameState.currentQuestion;
+  if (!question) return;
   
   // Update company info
-  document.getElementById('company-name').textContent = question.company.NAME;
-  document.getElementById('company-details').innerHTML = `
-    <div class="detail-item">
-      <span class="detail-label">
-        <i data-lucide="dollar-sign"></i> Market Value (NOK)
-      </span>
-      <span class="detail-value">${formatNumber(question.company.MVAL_NOK)}</span>
-    </div>
-    <div class="detail-item">
-      <span class="detail-label">
-        <i data-lucide="percent"></i> Ownership
-      </span>
-      <span class="detail-value">${question.company.OWNERSHIP}%</span>
-    </div>
-    <div class="detail-item">
-      <span class="detail-label">
-        <i data-lucide="building-2"></i> Industry
-      </span>
-      <span class="detail-value">${question.company.INDUSTRY}</span>
-    </div>
-  `;
+  const companyName = document.getElementById('company-name');
+  if (companyName) companyName.textContent = question.company.NAME;
+  
+  // Generate details based on question type (hide the answer field)
+  const companyDetails = document.getElementById('company-details');
+  if (companyDetails) {
+    const details = [];
+    const type = question.type;
+    
+    // Always show market value
+    details.push(`
+      <div class="detail-item">
+        <span class="detail-label">
+          <i data-lucide="dollar-sign"></i> Market Value (NOK)
+        </span>
+        <span class="detail-value">${formatNumber(question.company.MVAL_NOK)}</span>
+      </div>
+    `);
+    
+    // Always show ownership
+    details.push(`
+      <div class="detail-item">
+        <span class="detail-label">
+          <i data-lucide="percent"></i> Ownership
+        </span>
+        <span class="detail-value">${question.company.OWNERSHIP}%</span>
+      </div>
+    `);
+    
+    // Show industry if NOT asking about industry
+    if (type !== 'industry') {
+      details.push(`
+        <div class="detail-item">
+          <span class="detail-label">
+            <i data-lucide="building-2"></i> Industry
+          </span>
+          <span class="detail-value">${question.company.INDUSTRY}</span>
+        </div>
+      `);
+    }
+    
+    // Show country if NOT asking about country
+    if (type !== 'country') {
+      details.push(`
+        <div class="detail-item">
+          <span class="detail-label">
+            <i data-lucide="map-pin"></i> Country
+          </span>
+          <span class="detail-value">${question.company.COUNRTY || question.company.COUNTRY}</span>
+        </div>
+      `);
+    }
+    
+    // Show region if NOT asking about region
+    if (type !== 'region') {
+      details.push(`
+        <div class="detail-item">
+          <span class="detail-label">
+            <i data-lucide="globe"></i> Region
+          </span>
+          <span class="detail-value">${question.company.REGION}</span>
+        </div>
+      `);
+    }
+    
+    // Show year if NOT asking about year
+    if (type !== 'year') {
+      details.push(`
+        <div class="detail-item">
+          <span class="detail-label">
+            <i data-lucide="calendar"></i> Year
+          </span>
+          <span class="detail-value">${question.company.YEAR}</span>
+        </div>
+      `);
+    }
+    
+    companyDetails.innerHTML = details.join('');
+  }
   
   // Reinitialize icons
   lucide.createIcons();
   
   // Update question
-  document.getElementById('question-text').textContent = getQuestionText(question.type);
+  const questionText = document.getElementById('question-text');
+  if (questionText) questionText.textContent = getQuestionText(question.type);
   
   // Display options
   const container = document.getElementById('options-container');
-  container.innerHTML = '';
-  
-  question.options.forEach((option, index) => {
-    const btn = document.createElement('button');
-    btn.className = 'option-btn';
-    btn.textContent = option;
-    btn.onclick = () => selectAnswer(option, question);
-    container.appendChild(btn);
-  });
+  if (container) {
+    container.innerHTML = '';
+    
+    question.options.forEach((option) => {
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      btn.textContent = option;
+      btn.onclick = () => selectAnswer(option, question);
+      container.appendChild(btn);
+    });
+  }
   
   // Clear feedback
   const feedback = document.getElementById('feedback');
-  feedback.textContent = '';
-  feedback.className = 'feedback';
+  if (feedback) {
+    feedback.textContent = '';
+    feedback.className = 'feedback';
+  }
 }
 
 function selectAnswer(selectedAnswer, question) {
@@ -319,25 +577,29 @@ function selectAnswer(selectedAnswer, question) {
   
   const isCorrect = selectedAnswer === question.correctAnswer;
   
-  // Update score and streak
+  // Update counts
+  gameState.answeredCount++;
+  gameState.totalCount++;
   if (isCorrect) {
-    gameState.score++;
-    gameState.streak++;
-    if (gameState.streak > gameState.maxStreak) {
-      gameState.maxStreak = gameState.streak;
-    }
-  } else {
-    gameState.streak = 0;
+    gameState.correctCount++;
   }
+  
+  // Update ELO
+  updateElo(isCorrect);
+  
+  // Update displays
+  updateStatsDisplay();
   
   // Show feedback
   const feedback = document.getElementById('feedback');
-  if (isCorrect) {
-    feedback.textContent = '✓ Correct!';
-    feedback.className = 'feedback success';
-  } else {
-    feedback.textContent = `✗ Incorrect. The correct answer is: ${question.correctAnswer}`;
-    feedback.className = 'feedback error';
+  if (feedback) {
+    if (isCorrect) {
+      feedback.textContent = '✓ Correct!';
+      feedback.className = 'feedback success';
+    } else {
+      feedback.textContent = `✗ Incorrect. The correct answer is: ${question.correctAnswer}`;
+      feedback.className = 'feedback error';
+    }
   }
   
   // Mark buttons
@@ -349,49 +611,21 @@ function selectAnswer(selectedAnswer, question) {
     }
   });
   
-  // Update score display
-  document.getElementById('current-score').textContent = gameState.score;
-  document.getElementById('current-streak').textContent = gameState.streak;
-  
   // Move to next question
   setTimeout(() => {
-    gameState.currentQuestion++;
+    generateNextQuestion();
     displayQuestion();
   }, 2000);
 }
 
-function endGame() {
-  showResultsScreen();
+function updateStatsDisplay() {
+  const correctCount = document.getElementById('correct-count');
+  const answeredCount = document.getElementById('answered-count');
+  const totalCount = document.getElementById('total-count');
   
-  const percentage = Math.round((gameState.score / gameState.totalQuestions) * 100);
-  
-  // Update results
-  document.getElementById('final-score').textContent = `${gameState.score}/${gameState.totalQuestions}`;
-  document.getElementById('final-percentage').textContent = `${percentage}%`;
-  document.getElementById('final-streak').textContent = gameState.maxStreak;
-  
-  // Show message
-  const message = document.getElementById('results-message');
-  if (percentage === 100) {
-    message.textContent = 'Perfect score! You\'re a NBIM expert! 🎉';
-    message.style.background = 'var(--success-light)';
-    message.style.color = 'var(--success)';
-  } else if (percentage >= 80) {
-    message.textContent = 'Excellent work! You know your stuff! 🎯';
-    message.style.background = 'var(--success-light)';
-    message.style.color = 'var(--success)';
-  } else if (percentage >= 60) {
-    message.textContent = 'Good job! Keep learning! 💪';
-    message.style.background = 'var(--accent-light)';
-    message.style.color = 'var(--accent-primary)';
-  } else {
-    message.textContent = 'Not bad! Try again to improve! 📚';
-    message.style.background = 'var(--bg-secondary)';
-    message.style.color = 'var(--text-secondary)';
-  }
-  
-  // Reinitialize icons
-  lucide.createIcons();
+  if (correctCount) correctCount.textContent = gameState.correctCount;
+  if (answeredCount) answeredCount.textContent = gameState.answeredCount;
+  if (totalCount) totalCount.textContent = gameState.totalCount;
 }
 
 function formatNumber(num) {
@@ -402,6 +636,271 @@ function showError(message) {
   alert(message);
 }
 
+// ELO Modal
+function showEloModal() {
+  const modal = document.getElementById('elo-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    drawEloChart();
+  }
+}
+
+function hideEloModal() {
+  const modal = document.getElementById('elo-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function drawEloChart() {
+  const canvas = document.getElementById('elo-chart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width = 800;
+  const height = canvas.height = 400;
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, width, height);
+  
+  // Set styles based on theme
+  const isDark = window.getComputedStyle(document.documentElement).getPropertyValue('--text-primary') !== '#0f172a';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+  const lineColor = isDark ? '#60a5fa' : '#3b82f6';
+  const textColor = isDark ? '#cbd5e1' : '#64748b';
+  
+  // Find min/max for scaling
+  let minElo = Infinity, maxElo = Infinity;
+  if (gameState.eloHistory.length > 0) {
+    minElo = Math.min(...gameState.eloHistory.map(h => h.elo));
+    maxElo = Math.max(...gameState.eloHistory.map(h => h.elo));
+    const range = maxElo - minElo;
+    minElo = minElo - range * 0.1;
+    maxElo = maxElo + range * 0.1;
+  }
+  
+  // Draw grid
+  ctx.strokeStyle = gridColor;
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = 50 + (height - 100) * (i / 5);
+    ctx.beginPath();
+    ctx.moveTo(60, y);
+    ctx.lineTo(width - 20, y);
+    ctx.stroke();
+    
+    // Y-axis labels
+    if (gameState.eloHistory.length > 0) {
+      const value = maxElo - (maxElo - minElo) * (i / 5);
+      ctx.fillStyle = textColor;
+      ctx.font = '12px Space Grotesk';
+      ctx.textAlign = 'right';
+      ctx.fillText(Math.round(value).toString(), 55, y + 4);
+    }
+  }
+  
+  // Draw axes
+  ctx.strokeStyle = textColor;
+  ctx.lineWidth = 2;
+  
+  // Y-axis
+  ctx.beginPath();
+  ctx.moveTo(60, 50);
+  ctx.lineTo(60, height - 50);
+  ctx.stroke();
+  
+  // X-axis
+  ctx.beginPath();
+  ctx.moveTo(60, height - 50);
+  ctx.lineTo(width - 20, height - 50);
+  ctx.stroke();
+  
+  // Draw line
+  if (gameState.eloHistory.length > 1) {
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    
+    gameState.eloHistory.forEach((point, index) => {
+      const x = 60 + ((width - 80) / (gameState.eloHistory.length - 1)) * index;
+      const y = height - 50 - ((height - 100) * ((point.elo - minElo) / (maxElo - minElo)));
+      
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    
+    ctx.stroke();
+    
+    // Draw points
+    gameState.eloHistory.forEach((point, index) => {
+      const x = 60 + ((width - 80) / (gameState.eloHistory.length - 1)) * index;
+      const y = height - 50 - ((height - 100) * ((point.elo - minElo) / (maxElo - minElo)));
+      
+      ctx.fillStyle = lineColor;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  
+  // Labels
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 14px Space Grotesk';
+  ctx.textAlign = 'center';
+  ctx.fillText('Questions Answered', width / 2, height - 10);
+  
+  ctx.save();
+  ctx.translate(20, height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText('ELO Rating', 0, 0);
+  ctx.restore();
+  
+  // Reset for lucide icons
+  lucide.createIcons();
+}
+
+// Year Filter Functions
+function showYearModal() {
+  const modal = document.getElementById('year-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    
+    // Get unique years from data
+    const years = [...new Set(gameState.data.map(d => d.YEAR))].sort((a, b) => b - a);
+    
+    // Create checkboxes
+    const checkboxes = document.getElementById('year-checkboxes');
+    if (checkboxes) {
+      checkboxes.innerHTML = '';
+      years.forEach(year => {
+        const item = document.createElement('div');
+        item.className = 'year-checkbox-item';
+        const isChecked = gameState.selectedYears.length === 0 || gameState.selectedYears.includes(year);
+        item.innerHTML = `
+          <input type="checkbox" id="year-${year}" value="${year}" ${isChecked ? 'checked' : ''}>
+          <label for="year-${year}">${year}</label>
+        `;
+        checkboxes.appendChild(item);
+      });
+    }
+    
+    lucide.createIcons();
+  }
+}
+
+function hideYearModal() {
+  const modal = document.getElementById('year-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function selectAllYears() {
+  document.querySelectorAll('#year-checkboxes input[type="checkbox"]').forEach(cb => {
+    cb.checked = true;
+  });
+}
+
+function deselectAllYears() {
+  document.querySelectorAll('#year-checkboxes input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+  });
+}
+
+function applyYearFilter() {
+  const checkboxes = document.querySelectorAll('#year-checkboxes input[type="checkbox"]:checked');
+  gameState.selectedYears = Array.from(checkboxes).map(cb => parseInt(cb.value));
+  
+  // Update button text
+  const filterText = document.getElementById('year-filter-text');
+  if (filterText) {
+    if (gameState.selectedYears.length === 0) {
+      filterText.textContent = 'All Years';
+    } else if (gameState.selectedYears.length === 1) {
+      filterText.textContent = gameState.selectedYears[0];
+    } else {
+      filterText.textContent = `${gameState.selectedYears.length} Years`;
+    }
+  }
+  
+  hideYearModal();
+}
+
+// Custom Quiz Functions
+function showCustomQuizModal() {
+  const modal = document.getElementById('custom-quiz-modal');
+  if (modal && gameState.data.length > 0) {
+    modal.classList.remove('hidden');
+    
+    // Get unique values for each filter type
+    const regions = [...new Set(gameState.data.map(d => d.REGION))].sort();
+    const countries = [...new Set(gameState.data.map(d => d.COUNRTY || d.COUNTRY))].sort();
+    const industries = [...new Set(gameState.data.map(d => d.INDUSTRY))].sort();
+    const years = [...new Set(gameState.data.map(d => d.YEAR))].sort((a, b) => b - a);
+    
+    // Populate checkboxes
+    populateCustomFilter('region-checkboxes', regions, 'region', gameState.customFilters.regions);
+    populateCustomFilter('country-checkboxes', countries, 'country', gameState.customFilters.countries);
+    populateCustomFilter('industry-checkboxes', industries, 'industry', gameState.customFilters.industries);
+    populateCustomFilter('year-checkboxes-custom', years, 'year', gameState.customFilters.years);
+    
+    lucide.createIcons();
+  }
+}
+
+function populateCustomFilter(containerId, values, prefix, selectedValues) {
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.innerHTML = '';
+    values.forEach(value => {
+      const item = document.createElement('div');
+      item.className = 'filter-checkbox-item';
+      const isChecked = selectedValues.length === 0 || selectedValues.includes(value);
+      item.innerHTML = `
+        <input type="checkbox" id="${prefix}-${value}" value="${value}" ${isChecked ? 'checked' : ''}>
+        <label for="${prefix}-${value}">${value}</label>
+      `;
+      container.appendChild(item);
+    });
+  }
+}
+
+function hideCustomQuizModal() {
+  const modal = document.getElementById('custom-quiz-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function clearCustomFilters() {
+  // Clear all checkboxes
+  document.querySelectorAll('#custom-quiz-modal input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+  });
+}
+
+function captureCustomFilters() {
+  // Capture selected regions
+  const regionCheckboxes = document.querySelectorAll('#region-checkboxes input[type="checkbox"]:checked');
+  gameState.customFilters.regions = Array.from(regionCheckboxes).map(cb => cb.value);
+  
+  // Capture selected countries
+  const countryCheckboxes = document.querySelectorAll('#country-checkboxes input[type="checkbox"]:checked');
+  gameState.customFilters.countries = Array.from(countryCheckboxes).map(cb => cb.value);
+  
+  // Capture selected industries
+  const industryCheckboxes = document.querySelectorAll('#industry-checkboxes input[type="checkbox"]:checked');
+  gameState.customFilters.industries = Array.from(industryCheckboxes).map(cb => cb.value);
+  
+  // Capture selected years
+  const yearCheckboxes = document.querySelectorAll('#year-checkboxes-custom input[type="checkbox"]:checked');
+  gameState.customFilters.years = Array.from(yearCheckboxes).map(cb => parseInt(cb.value));
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initGame);
 
@@ -410,4 +909,17 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
   if (localStorage.getItem('theme') === 'system') {
     setTheme('system');
   }
+});
+
+// Redraw chart when theme changes
+const observer = new MutationObserver(() => {
+  const modal = document.getElementById('elo-modal');
+  if (modal && !modal.classList.contains('hidden')) {
+    drawEloChart();
+  }
+});
+
+observer.observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: ['data-theme']
 });
