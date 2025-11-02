@@ -27,7 +27,14 @@ const gameState = {
   },
   eloHistory: [],
   elo: ELO_CONFIG.initialRating,
-  availableData: []
+  availableData: [],
+  // Cache for filter options
+  filterOptions: {
+    regions: [],
+    countries: [],
+    industries: [],
+    years: []
+  }
 };
 
 // Load ELO history from localStorage
@@ -169,6 +176,12 @@ async function loadData() {
     gameState.filteredData = gameState.data;
     gameState.availableData = [...gameState.data];
     
+    // Precompute and cache filter options once
+    gameState.filterOptions.regions = [...new Set(gameState.data.map(d => d.REGION))].sort();
+    gameState.filterOptions.countries = [...new Set(gameState.data.map(d => d.COUNRTY || d.COUNTRY))].sort();
+    gameState.filterOptions.industries = [...new Set(gameState.data.map(d => d.INDUSTRY))].sort();
+    gameState.filterOptions.years = [...new Set(gameState.data.map(d => d.YEAR))].sort((a, b) => b - a);
+    
     // Update stats
     const totalCompanies = document.getElementById('total-companies');
     if (totalCompanies) {
@@ -183,6 +196,13 @@ async function loadData() {
     console.error('Error loading data:', error);
     showError('Failed to load quiz data. Please refresh the page.');
     hideLoadingScreen();
+  }
+}
+
+function showLoadingScreen() {
+  const loadingScreen = document.getElementById('loading-screen');
+  if (loadingScreen) {
+    loadingScreen.classList.remove('hidden');
   }
 }
 
@@ -218,13 +238,17 @@ function setupEventListeners() {
   
   // Year modal
   document.getElementById('close-year-modal')?.addEventListener('click', () => {
+    hideYearModal();
+  });
+
+  document.getElementById('apply-year-filter')?.addEventListener('click', () => {
     applyYearFilter();
   });
-  
+
   document.getElementById('select-all-years')?.addEventListener('click', () => {
     selectAllYears();
   });
-  
+
   document.getElementById('deselect-all-years')?.addEventListener('click', () => {
     deselectAllYears();
   });
@@ -257,6 +281,7 @@ function setupEventListeners() {
   const categorySelect = document.getElementById('category-select');
   if (categorySelect) {
     categorySelect.addEventListener('change', (e) => {
+      checkForApplyChanges();
       if (e.target.value === 'custom') {
         showCustomQuizModal();
       } else {
@@ -264,6 +289,13 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Track filter changes using event delegation
+  document.addEventListener('change', (e) => {
+    if (e.target.closest('#year-checkboxes, #custom-quiz-modal')) {
+      checkForApplyChanges();
+    }
+  });
 }
 
 // Show screens
@@ -342,6 +374,9 @@ function applyCustomFilters(data) {
 }
 
 function applySettings() {
+  // Show loading animation
+  showLoadingScreen();
+  
   // Get category from dropdown
   const categorySelect = document.getElementById('category-select');
   if (categorySelect) {
@@ -354,12 +389,30 @@ function applySettings() {
   }
   
   // Reset progress and go back to welcome screen
-  resetGame();
-  showWelcomeScreen();
+  setTimeout(() => {
+    resetGame();
+    showWelcomeScreen();
+    hideLoadingScreen();
+    clearApplyChangesIndicator();
+  }, 300);
   
   // Close modals
   hideYearModal();
   hideCustomQuizModal();
+}
+
+function clearApplyChangesIndicator() {
+  const applyBtn = document.getElementById('apply-settings-btn');
+  if (applyBtn) {
+    applyBtn.classList.remove('has-changes');
+  }
+}
+
+function checkForApplyChanges() {
+  const applyBtn = document.getElementById('apply-settings-btn');
+  if (applyBtn) {
+    applyBtn.classList.add('has-changes');
+  }
 }
 
 function startQuiz() {
@@ -606,10 +659,10 @@ function selectAnswer(selectedAnswer, question) {
   const feedback = document.getElementById('feedback');
   if (feedback) {
     if (isCorrect) {
-      feedback.textContent = '✓ Correct!';
+      feedback.textContent = 'Correct!';
       feedback.className = 'feedback success';
     } else {
-      feedback.textContent = `✗ Incorrect. The correct answer is: ${question.correctAnswer}`;
+      feedback.textContent = `Incorrect. The correct answer is: ${question.correctAnswer}`;
       feedback.className = 'feedback error';
     }
   }
@@ -781,8 +834,8 @@ function showYearModal() {
   if (modal) {
     modal.classList.remove('hidden');
     
-    // Get unique years from data
-    const years = [...new Set(gameState.data.map(d => d.YEAR))].sort((a, b) => b - a);
+    // Use cached years
+    const years = gameState.filterOptions.years;
     
     // Create checkboxes
     const checkboxes = document.getElementById('year-checkboxes');
@@ -796,18 +849,9 @@ function showYearModal() {
           <input type="checkbox" id="year-${year}" value="${year}" ${isChecked ? 'checked' : ''}>
           <label for="year-${year}">${year}</label>
         `;
-        // Add click listener to entire item
-        item.addEventListener('click', (e) => {
-          if (e.target !== item.querySelector('input')) {
-            const checkbox = item.querySelector('input');
-            checkbox.checked = !checkbox.checked;
-          }
-        });
         checkboxes.appendChild(item);
       });
     }
-    
-    lucide.createIcons();
   }
 }
 
@@ -855,19 +899,11 @@ function showCustomQuizModal() {
   if (modal && gameState.data.length > 0) {
     modal.classList.remove('hidden');
     
-    // Get unique values for each filter type
-    const regions = [...new Set(gameState.data.map(d => d.REGION))].sort();
-    const countries = [...new Set(gameState.data.map(d => d.COUNRTY || d.COUNTRY))].sort();
-    const industries = [...new Set(gameState.data.map(d => d.INDUSTRY))].sort();
-    const years = [...new Set(gameState.data.map(d => d.YEAR))].sort((a, b) => b - a);
-    
-    // Populate checkboxes
-    populateCustomFilter('region-checkboxes', regions, 'region', gameState.customFilters.regions);
-    populateCustomFilter('country-checkboxes', countries, 'country', gameState.customFilters.countries);
-    populateCustomFilter('industry-checkboxes', industries, 'industry', gameState.customFilters.industries);
-    populateCustomFilter('year-checkboxes-custom', years, 'year', gameState.customFilters.years);
-    
-    lucide.createIcons();
+    // Use cached filter options
+    populateCustomFilter('region-checkboxes', gameState.filterOptions.regions, 'region', gameState.customFilters.regions);
+    populateCustomFilter('country-checkboxes', gameState.filterOptions.countries, 'country', gameState.customFilters.countries);
+    populateCustomFilter('industry-checkboxes', gameState.filterOptions.industries, 'industry', gameState.customFilters.industries);
+    populateCustomFilter('year-checkboxes-custom', gameState.filterOptions.years, 'year', gameState.customFilters.years);
   }
 }
 
@@ -883,13 +919,6 @@ function populateCustomFilter(containerId, values, prefix, selectedValues) {
         <input type="checkbox" id="${prefix}-${value}" value="${value}" ${isChecked ? 'checked' : ''}>
         <label for="${prefix}-${value}">${value}</label>
       `;
-      // Add click listener to entire item
-      item.addEventListener('click', (e) => {
-        if (e.target !== item.querySelector('input')) {
-          const checkbox = item.querySelector('input');
-          checkbox.checked = !checkbox.checked;
-        }
-      });
       container.appendChild(item);
     });
   }

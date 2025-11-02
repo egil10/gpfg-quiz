@@ -35,7 +35,6 @@
     <header class="header">
       <div class="header-left">
         <h1 class="title" id="title-clickable">
-          <i data-lucide="brain-circuit"></i>
           GPFG Quiz
         </h1>
         <p class="subtitle">Norwegian Oil Fund Holdings Challenge</p>
@@ -46,7 +45,6 @@
         <div class="filter-controls">
           <!-- Year Filter Button -->
           <button id="year-filter-btn" class="btn-filter" title="Filter by year">
-            <i data-lucide="calendar"></i>
             <span id="year-filter-text">All Years</span>
           </button>
           
@@ -62,7 +60,6 @@
           
           <!-- Apply Changes Button -->
           <button id="apply-settings-btn" class="btn-filter btn-apply">
-            <i data-lucide="check"></i>
             Apply
           </button>
         </div>
@@ -70,7 +67,6 @@
         <!-- ELO Display -->
         <div class="elo-display-header">
           <button id="show-elo-btn" class="elo-btn" title="View ELO Graph">
-            <i data-lucide="trending-up"></i>
             <span id="elo-display-header">800</span>
           </button>
         </div>
@@ -111,26 +107,22 @@
       <!-- Welcome Screen -->
       <div id="welcome-screen" class="welcome-screen">
         <div class="welcome-content">
-          <i data-lucide="zap" class="welcome-icon"></i>
           <h2>Ready to Test Your Knowledge?</h2>
           <p>Test your knowledge of companies in the Norwegian Oil Fund portfolio</p>
           <div class="stats-grid">
             <div class="stat-card">
-              <i data-lucide="building-2"></i>
               <div>
                 <span class="stat-value" id="total-companies">187,118</span>
                 <span class="stat-label">Companies</span>
               </div>
             </div>
             <div class="stat-card">
-              <i data-lucide="map"></i>
               <div>
                 <span class="stat-value">108</span>
                 <span class="stat-label">Countries</span>
               </div>
             </div>
             <div class="stat-card">
-              <i data-lucide="layers"></i>
               <div>
                 <span class="stat-value">16</span>
                 <span class="stat-label">Industries</span>
@@ -138,7 +130,6 @@
             </div>
           </div>
           <button id="start-btn" class="btn btn-primary btn-large">
-            <i data-lucide="play"></i>
             Start Quiz
           </button>
         </div>
@@ -150,19 +141,15 @@
           <!-- Stats Bar -->
           <div class="quiz-stats-bar">
             <div class="stat-item">
-              <i data-lucide="check-circle"></i>
               <span>Correct: <strong id="correct-count">0</strong></span>
             </div>
             <div class="stat-item">
-              <i data-lucide="help-circle"></i>
               <span>Answered: <strong id="answered-count">0</strong></span>
             </div>
             <div class="stat-item">
-              <i data-lucide="target"></i>
               <span>Total: <strong id="total-count">0</strong></span>
             </div>
             <div class="stat-item">
-              <i data-lucide="trending-up"></i>
               <span>ELO: <strong id="elo-display">800</strong></span>
             </div>
           </div>
@@ -178,6 +165,9 @@
                 <div id="options-container" class="options-container">
                   <!-- Options will be inserted here -->
                 </div>
+
+                <!-- Feedback -->
+                <div id="feedback" class="feedback"></div>
               </div>
             </div>
 
@@ -185,16 +175,12 @@
             <div class="quiz-right">
               <div class="company-card">
                 <div class="company-header">
-                  <i data-lucide="briefcase"></i>
                   <h2 id="company-name" class="company-name">Loading...</h2>
                 </div>
                 <div class="company-details" id="company-details">
                   <!-- Company details will be inserted here -->
                 </div>
               </div>
-
-              <!-- Feedback -->
-              <div id="feedback" class="feedback"></div>
             </div>
           </div>
         </div>
@@ -233,6 +219,9 @@
           <div class="modal-actions">
             <button id="select-all-years" class="btn btn-secondary">Select All</button>
             <button id="deselect-all-years" class="btn btn-secondary">Deselect All</button>
+          </div>
+          <div class="modal-footer-actions">
+            <button id="apply-year-filter" class="btn btn-primary">Apply</button>
           </div>
         </div>
       </div>
@@ -292,18 +281,20 @@
     <!-- Footer -->
     <footer class="footer">
       <div class="footer-content">
-        <div class="footer-left">
+        <div class="footer-column">
           <p class="footer-tagline">Learn everything about the world's biggest government pension fund</p>
           <p class="footer-description">The Government Pension Fund Global (GPFG) is Norway's sovereign wealth fund, managed by Norges Bank Investment Management (NBIM).</p>
-          <div class="footer-links">
-            <a href="https://www.regjeringen.no/en/topics/the-economy/the-government-pension-fund/id1441/" target="_blank" rel="noopener noreferrer">About GPFG</a>
-            <a href="https://www.nbim.no/en/investments/all-investments/" target="_blank" rel="noopener noreferrer">All Investments</a>
-          </div>
+        </div>
+        <div class="footer-column">
           <p class="footer-disclaimer">This quiz uses publicly available data for informational and educational purposes only.</p>
         </div>
-        <div class="footer-right">
-          <a href="https://egil10.github.io/gpfg-quiz/" class="footer-link">GPFG Quiz</a>
-          <a href="https://github.com/egil10/gpfg-quiz" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+        <div class="footer-column">
+          <div class="footer-links-vertical">
+            <a href="https://www.regjeringen.no/en/topics/the-economy/the-government-pension-fund/id1441/" target="_blank" rel="noopener noreferrer">About GPFG</a>
+            <a href="https://www.nbim.no/en/investments/all-investments/" target="_blank" rel="noopener noreferrer">All Investments</a>
+            <a href="https://egil10.github.io/gpfg-quiz/" class="footer-link">GPFG Quiz</a>
+            <a href="https://github.com/egil10/gpfg-quiz" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+          </div>
         </div>
       </div>
     </footer>
