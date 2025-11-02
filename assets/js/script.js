@@ -655,18 +655,6 @@ function selectAnswer(selectedAnswer, question) {
   // Update displays
   updateStatsDisplay();
   
-  // Show feedback
-  const feedback = document.getElementById('feedback');
-  if (feedback) {
-    if (isCorrect) {
-      feedback.textContent = 'Correct!';
-      feedback.className = 'feedback success';
-    } else {
-      feedback.textContent = `Incorrect. The correct answer is: ${question.correctAnswer}`;
-      feedback.className = 'feedback error';
-    }
-  }
-  
   // Mark buttons
   options.forEach(btn => {
     if (btn.textContent === question.correctAnswer) {
@@ -841,6 +829,8 @@ function showYearModal() {
     const checkboxes = document.getElementById('year-checkboxes');
     if (checkboxes) {
       checkboxes.innerHTML = '';
+      // Use DocumentFragment for better performance
+      const fragment = document.createDocumentFragment();
       years.forEach(year => {
         const item = document.createElement('div');
         item.className = 'year-checkbox-item';
@@ -849,8 +839,9 @@ function showYearModal() {
           <input type="checkbox" id="year-${year}" value="${year}" ${isChecked ? 'checked' : ''}>
           <label for="year-${year}">${year}</label>
         `;
-        checkboxes.appendChild(item);
+        fragment.appendChild(item);
       });
+      checkboxes.appendChild(fragment);
     }
   }
 }
