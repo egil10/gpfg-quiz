@@ -267,6 +267,10 @@ function setupEventListeners() {
     hideEloModal();
   });
 
+  document.getElementById('reset-elo-btn')?.addEventListener('click', () => {
+    resetElo();
+  });
+
   // Custom quiz modal
   document.getElementById('close-custom-quiz-modal')?.addEventListener('click', () => {
     // Don't capture filters here - let the Apply button do it
@@ -702,6 +706,24 @@ function hideEloModal() {
   const modal = document.getElementById('elo-modal');
   if (modal) {
     modal.classList.add('hidden');
+  }
+}
+
+function resetElo() {
+  // Reset ELO to initial value
+  gameState.elo = ELO_CONFIG.initialRating;
+  gameState.eloHistory = [{ question: 0, elo: ELO_CONFIG.initialRating }];
+  
+  // Save to localStorage
+  saveEloHistory();
+  
+  // Update displays
+  updateEloDisplay();
+  
+  // Redraw chart if modal is open
+  const modal = document.getElementById('elo-modal');
+  if (modal && !modal.classList.contains('hidden')) {
+    drawEloChart();
   }
 }
 
