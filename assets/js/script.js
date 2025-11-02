@@ -1,688 +1,228 @@
-'use strict';
-
-// Performance optimizations
-const PERFORMANCE_CONFIG = {
-  // Memory management
-  MAX_CACHE_SIZE: 50,
-  CLEANUP_INTERVAL: 30000, // 30 seconds
-  
-  // Animation throttling
-  ANIMATION_THROTTLE: 16, // ~60fps
-  
-  // DOM updates batching
-  BATCH_DELAY: 10
-};
-
-// Global performance variables
-let cleanupTimer = null;
-let animationFrameId = null;
-let batchUpdateTimer = null;
-let pendingUpdates = new Set();
-
-// Performance monitoring
-const performanceMetrics = {
-  startTime: Date.now(),
-  operations: 0,
-  cacheHits: 0,
-  cacheMisses: 0
-};
-
-// Memory management
-const memoryCache = new Map();
-const domCache = new Map();
-
-// Throttled function wrapper
-function throttle(func, delay) {
-  let lastCall = 0;
-  return function(...args) {
-    const now = Date.now();
-    if (now - lastCall >= delay) {
-      lastCall = now;
-      return func.apply(this, args);
-    }
-  };
-}
-
-// Debounced function wrapper
-function debounce(func, delay) {
-  let timeoutId;
-  return function(...args) {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func.apply(this, args), delay);
-  };
-}
-
-// Efficient DOM updates
-function batchDOMUpdates() {
-  if (batchUpdateTimer) return;
-  
-  batchUpdateTimer = requestAnimationFrame(() => {
-    pendingUpdates.forEach(update => update());
-    pendingUpdates.clear();
-    batchUpdateTimer = null;
-  });
-}
-
-// Memory cleanup
-function cleanupMemory() {
-  // Clear old cache entries
-  if (memoryCache.size > PERFORMANCE_CONFIG.MAX_CACHE_SIZE) {
-    const entries = Array.from(memoryCache.entries());
-    const toDelete = entries.slice(0, entries.length - PERFORMANCE_CONFIG.MAX_CACHE_SIZE);
-    toDelete.forEach(([key]) => memoryCache.delete(key));
-  }
-  
-  // Clear old DOM cache
-  if (domCache.size > PERFORMANCE_CONFIG.MAX_CACHE_SIZE) {
-    const entries = Array.from(domCache.entries());
-    const toDelete = entries.slice(0, entries.length - PERFORMANCE_CONFIG.MAX_CACHE_SIZE);
-    toDelete.forEach(([key]) => domCache.delete(key));
-  }
-  
-  // Force garbage collection if available
-  if (window.gc) {
-    window.gc();
-  }
-}
-
-// Initialize performance monitoring
-function initPerformanceMonitoring() {
-  // Start cleanup timer
-  cleanupTimer = setInterval(cleanupMemory, PERFORMANCE_CONFIG.CLEANUP_INTERVAL);
-  
-  // Monitor performance
-  if ('performance' in window) {
-    window.addEventListener('beforeunload', () => {
-      const endTime = Date.now();
-      const totalTime = endTime - performanceMetrics.startTime;
-      console.log(`Performance metrics: ${performanceMetrics.operations} operations in ${totalTime}ms`);
-    });
-  }
-}
+// ======================================================================
+// NBIM Quiz - Game Logic
+// ======================================================================
 
 // Game state
-let gameState = {
+const gameState = {
+  data: [],
+  filteredData: [],
   currentQuestion: 0,
   score: 0,
   streak: 0,
   maxStreak: 0,
   totalQuestions: 10,
-  currentCategory: 'all',
-  currentYear: '2025', // Default to latest year
-  currentRegion: 'all',
-  currentIndustry: 'all',
   questions: [],
-  currentQuestionData: null,
-  gameStarted: false,
-  gameEnded: false,
-  language: 'en',
-  availableYears: []
+  currentCategory: 'all'
 };
 
-// Data storage
-let nbimData = [];
-let filteredData = [];
-
-// Language strings
-const strings = {
-  en: {
-    title: 'NBIM Quiz',
-    subtitle: 'Norwegian Oil Fund Holdings Challenge',
-    collectionInfo: 'Test your knowledge of global investments',
-    categories: {
-      all: 'All Categories',
-      country: 'Country Quiz',
-      industry: 'Industry Quiz',
-      region: 'Region Quiz',
-      year: 'Year Quiz',
-      incorporated: 'Incorporated Country Quiz',
-      top100: 'Top 100 Companies',
-      marketValue: 'Market Value Estimation'
-    },
-    questions: {
-      country: 'Which country is this company from?',
-      industry: 'Which industry does this company belong to?',
-      region: 'Which region is this company from?',
-      year: 'In which year was this company in the NBIM portfolio?',
-      incorporated: 'In which country is this company incorporated?',
-      top100: 'Which country is this top 100 company from?',
-      marketValue: 'What is the estimated market value of this company?'
-    },
-    buttons: {
-      playAgain: 'Play Again',
-      nextQuestion: 'Next Question',
-      showAnswer: 'Show Answer',
-      download: 'Download Results'
-    },
-    messages: {
-      correct: 'Correct!',
-      incorrect: 'Incorrect!',
-      gameOver: 'Game Over!',
-      perfectScore: 'Perfect Score!',
-      congratulations: 'Congratulations!',
-      wellDone: 'Well done!',
-      tryAgain: 'Try again!',
-      excellent: 'Excellent!',
-      greatJob: 'Great job!',
-      notBad: 'Not bad!',
-      keepGoing: 'Keep going!'
-    },
-    modals: {
-      congrats: 'Congratulations!',
-      roundResults: 'Round Results',
-      companies: 'Companies',
-      portfolio: 'Portfolio',
-      howToPlay: 'How to Play'
-    },
-    howToPlay: {
-      title: 'How to Play',
-      sections: [
-        {
-          title: 'Objective',
-          content: 'Test your knowledge of companies in the Norwegian Oil Fund (NBIM) portfolio. Answer questions about company locations, industries, regions, and years.'
-        },
-        {
-          title: 'Gameplay',
-          content: 'You will be shown a company name and asked to identify its country, industry, region, or year from the fund\'s holdings. Choose the correct answer from the multiple choice options.'
-        },
-        {
-          title: 'Scoring',
-          content: 'Earn points for correct answers and build up streaks. Perfect scores earn special diplomas!'
-        },
-        {
-          title: 'Categories',
-          content: 'Choose from different quiz categories: Country Quiz, Industry Quiz, Region Quiz, or Year Quiz. You can also filter by specific years, regions, or industries.'
-        }
-      ]
-    }
-  }
-};
-
-// Initialize the game
-async function initGame() {
-  initPerformanceMonitoring();
-  await loadData();
-  setupEventListeners();
-  updateUI();
-  showWelcomeMessage();
+// Theme management
+function initTheme() {
+  const theme = localStorage.getItem('theme') || 'system';
+  setTheme(theme);
+  
+  // Set active theme button
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.getElementById(`theme-${theme}`).classList.add('active');
+  
+  // Add event listeners
+  document.getElementById('theme-light')?.addEventListener('click', () => setTheme('light'));
+  document.getElementById('theme-dark')?.addEventListener('click', () => setTheme('dark'));
+  document.getElementById('theme-system')?.addEventListener('click', () => setTheme('system'));
 }
 
-// Load NBIM data
+function setTheme(theme) {
+  localStorage.setItem('theme', theme);
+  
+  if (theme === 'system') {
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    theme = systemTheme;
+  }
+  
+  document.documentElement.setAttribute('data-theme', theme);
+  
+  // Update active button
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  const btn = document.getElementById(`theme-${localStorage.getItem('theme')}`);
+  if (btn) btn.classList.add('active');
+  
+  // Reinitialize icons with new colors
+  lucide.createIcons();
+}
+
+// Data loading
 async function loadData() {
   try {
-    // Try to load real data from JSON file
-    const response = await fetch('data/processed/nbim_holdings.json');
-    if (response.ok) {
-      nbimData = await response.json();
-      console.log(`Loaded ${nbimData.length} companies from JSON file`);
-      
-      // Extract available years
-      const years = [...new Set(nbimData.map(item => item.YEAR).filter(year => year))].sort((a, b) => b - a);
-      gameState.availableYears = years;
-      
-      // Set default year to the latest available
-      if (years.length > 0) {
-        gameState.currentYear = years[0].toString();
-      }
-      
-      // Apply initial filtering
-      filteredData = filterData();
-      console.log(`Filtered to ${filteredData.length} companies for year ${gameState.currentYear}`);
-    } else {
-      throw new Error('Failed to load JSON data');
-    }
+    const response = await fetch('data/equities.json');
+    if (!response.ok) throw new Error('Failed to load data');
+    
+    const minimalData = await response.json();
+    
+    // Expand minimal data to full format for compatibility
+    gameState.data = minimalData.map(d => ({
+      NAME: d.n,
+      COUNRTY: d.c,
+      REGION: d.r,
+      INDUSTRY: d.i,
+      YEAR: d.y,
+      OWNERSHIP: d.o,
+      MVAL_NOK: d.m
+    }));
+    
+    gameState.filteredData = gameState.data;
+    
+    // Update stats
+    document.getElementById('total-companies').textContent = 
+      gameState.data.length.toLocaleString();
+    
+    console.log(`Loaded ${gameState.data.length} companies`);
   } catch (error) {
     console.error('Error loading data:', error);
-    console.log('Falling back to sample data...');
-    // Fallback to sample data
-    nbimData = generateSampleData();
-    
-    // Set up sample years
-    gameState.availableYears = [2025, 2024, 2023];
-    gameState.currentYear = '2025';
-    
-    // Apply initial filtering
-    filteredData = filterData();
+    showError('Failed to load quiz data. Please refresh the page.');
   }
 }
 
-// Generate sample data based on the structure we observed
-function generateSampleData() {
-  const sampleData = [
-    { REGION: 'Oceania', COUNRTY: 'Australia', NAME: 'a2 Milk Co Ltd/The', INDUSTRY: 'Consumer Staples', MVAL_NOK: 548688979, MVAL_USD: 54219886, VOTING: 1.43, OWNERSHIP: 1.43, COUNTRY_INC: 'New Zealand', YEAR: 2025 },
-    { REGION: 'Oceania', COUNRTY: 'Australia', NAME: 'Abacus Group', INDUSTRY: 'Real Estate', MVAL_NOK: 39052847, MVAL_USD: 3859091, VOTING: 0.59, OWNERSHIP: 0.59, COUNTRY_INC: 'Australia', YEAR: 2025 },
-    { REGION: 'Oceania', COUNRTY: 'Australia', NAME: 'Abacus Storage King', INDUSTRY: 'Real Estate', MVAL_NOK: 68312217, MVAL_USD: 6750419, VOTING: 0.51, OWNERSHIP: 0.51, COUNTRY_INC: 'Australia', YEAR: 2025 },
-    { REGION: 'Oceania', COUNRTY: 'Australia', NAME: 'Accent Group Ltd', INDUSTRY: 'Consumer Discretionary', MVAL_NOK: 35857683, MVAL_USD: 3543354, VOTING: 0.64, OWNERSHIP: 0.64, COUNTRY_INC: 'Australia', YEAR: 2025 },
-    { REGION: 'North America', COUNRTY: 'United States', NAME: 'Apple Inc', INDUSTRY: 'Technology', MVAL_NOK: 15000000000, MVAL_USD: 1500000000, VOTING: 2.5, OWNERSHIP: 2.5, COUNTRY_INC: 'United States', YEAR: 2025 },
-    { REGION: 'North America', COUNRTY: 'United States', NAME: 'Microsoft Corp', INDUSTRY: 'Technology', MVAL_NOK: 12000000000, MVAL_USD: 1200000000, VOTING: 2.1, OWNERSHIP: 2.1, COUNTRY_INC: 'United States', YEAR: 2025 },
-    { REGION: 'Europe', COUNRTY: 'Germany', NAME: 'SAP SE', INDUSTRY: 'Technology', MVAL_NOK: 8000000000, MVAL_USD: 800000000, VOTING: 1.8, OWNERSHIP: 1.8, COUNTRY_INC: 'Germany', YEAR: 2025 },
-    { REGION: 'Europe', COUNRTY: 'Switzerland', NAME: 'Nestle SA', INDUSTRY: 'Consumer Staples', MVAL_NOK: 7000000000, MVAL_USD: 700000000, VOTING: 1.6, OWNERSHIP: 1.6, COUNTRY_INC: 'Switzerland', YEAR: 2025 },
-    { REGION: 'Asia', COUNRTY: 'Japan', NAME: 'Toyota Motor Corp', INDUSTRY: 'Consumer Discretionary', MVAL_NOK: 6000000000, MVAL_USD: 600000000, VOTING: 1.4, OWNERSHIP: 1.4, COUNTRY_INC: 'Japan', YEAR: 2025 },
-    { REGION: 'Asia', COUNRTY: 'China', NAME: 'Tencent Holdings Ltd', INDUSTRY: 'Technology', MVAL_NOK: 5000000000, MVAL_USD: 500000000, VOTING: 1.2, OWNERSHIP: 1.2, COUNTRY_INC: 'China', YEAR: 2025 }
-  ];
-  
-  // Add more sample data to make it more interesting
-  const industries = ['Technology', 'Healthcare', 'Financial Services', 'Consumer Staples', 'Consumer Discretionary', 'Energy', 'Materials', 'Industrials', 'Utilities', 'Real Estate'];
-  const regions = ['North America', 'Europe', 'Asia', 'Oceania', 'Latin America', 'Africa', 'Middle East'];
-  const countries = {
-    'North America': ['United States', 'Canada', 'Mexico'],
-    'Europe': ['Germany', 'France', 'United Kingdom', 'Switzerland', 'Netherlands', 'Sweden', 'Norway'],
-    'Asia': ['Japan', 'China', 'South Korea', 'India', 'Singapore', 'Hong Kong'],
-    'Oceania': ['Australia', 'New Zealand'],
-    'Latin America': ['Brazil', 'Mexico', 'Chile'],
-    'Africa': ['South Africa', 'Nigeria'],
-    'Middle East': ['Saudi Arabia', 'United Arab Emirates', 'Israel']
-  };
-  
-  const companyNames = [
-    'Apple Inc', 'Microsoft Corp', 'Amazon.com Inc', 'Alphabet Inc', 'Tesla Inc',
-    'Meta Platforms Inc', 'NVIDIA Corp', 'Berkshire Hathaway Inc', 'Johnson & Johnson', 'JPMorgan Chase & Co',
-    'Visa Inc', 'Procter & Gamble Co', 'UnitedHealth Group Inc', 'Home Depot Inc', 'Mastercard Inc',
-    'SAP SE', 'Nestle SA', 'Roche Holding AG', 'ASML Holding NV', 'Novartis AG',
-    'Toyota Motor Corp', 'Sony Group Corp', 'SoftBank Group Corp', 'Mitsubishi Corp', 'Honda Motor Co Ltd',
-    'Tencent Holdings Ltd', 'Alibaba Group Holding Ltd', 'Taiwan Semiconductor Manufacturing Co Ltd', 'Samsung Electronics Co Ltd', 'TSMC'
-  ];
-  
-  // Generate more sample data
-  for (let i = 0; i < 100; i++) {
-    const region = regions[Math.floor(Math.random() * regions.length)];
-    const country = countries[region][Math.floor(Math.random() * countries[region].length)];
-    const industry = industries[Math.floor(Math.random() * industries.length)];
-    const name = companyNames[Math.floor(Math.random() * companyNames.length)] + (i > 29 ? ` ${i}` : '');
-    const mvalNok = Math.floor(Math.random() * 10000000000) + 100000000;
-    const mvalUsd = Math.floor(mvalNok / 10);
-    const voting = Math.random() * 3;
-    const ownership = voting;
-    const year = 2025;
-    
-    sampleData.push({
-      REGION: region,
-      COUNRTY: country,
-      NAME: name,
-      INDUSTRY: industry,
-      MVAL_NOK: mvalNok,
-      MVAL_USD: mvalUsd,
-      VOTING: Math.round(voting * 100) / 100,
-      OWNERSHIP: Math.round(ownership * 100) / 100,
-      COUNTRY_INC: country,
-      YEAR: year
-    });
-  }
-  
-  return sampleData;
+// Initialize game
+function initGame() {
+  initTheme();
+  setupEventListeners();
+  loadData();
 }
 
-// Setup event listeners
+// Event listeners
 function setupEventListeners() {
+  // Start button
+  document.getElementById('start-btn')?.addEventListener('click', startQuiz);
+  
   // Category selector
-  const categorySelect = document.getElementById('category-select');
-  if (categorySelect) {
-    categorySelect.addEventListener('change', handleCategoryChange);
-  }
+  document.getElementById('category-select')?.addEventListener('change', (e) => {
+    gameState.currentCategory = e.target.value;
+  });
   
-  // Year selector
-  const yearSelect = document.getElementById('year-select');
-  if (yearSelect) {
-    yearSelect.addEventListener('change', handleYearChange);
-  }
+  // Play again
+  document.getElementById('play-again-btn')?.addEventListener('click', () => {
+    startQuiz();
+  });
   
-  // Modal close buttons
-  document.getElementById('close-companies-modal')?.addEventListener('click', () => hideModal('companies-modal'));
-  document.getElementById('close-portfolio-modal')?.addEventListener('click', () => hideModal('portfolio-modal'));
-  document.getElementById('close-how-to-play-modal')?.addEventListener('click', () => hideModal('how-to-play-modal'));
-  
-  // Footer links
-  document.getElementById('show-companies-link')?.addEventListener('click', () => showModal('companies-modal'));
-  document.getElementById('show-portfolio-link')?.addEventListener('click', () => showModal('portfolio-modal'));
-  document.getElementById('show-how-to-play-link')?.addEventListener('click', () => showModal('how-to-play-modal'));
-  
-  // Reset button
-  document.getElementById('reset-btn')?.addEventListener('click', resetGame);
-  
-  // Round results buttons
-  document.getElementById('round-results-play-again')?.addEventListener('click', resetGame);
-  document.getElementById('diploma-play-again')?.addEventListener('click', resetGame);
-  
-  // Language toggle
-  document.getElementById('language-toggle')?.addEventListener('click', toggleLanguage);
+  // Back home
+  document.getElementById('back-home-btn')?.addEventListener('click', () => {
+    showWelcomeScreen();
+    resetGame();
+  });
 }
 
-// Handle category change
-function handleCategoryChange(event) {
-  gameState.currentCategory = event.target.value;
-  filteredData = filterData();
-  console.log(`Category changed to: ${gameState.currentCategory}, filtered to ${filteredData.length} companies`);
-  resetGame();
+// Show screens
+function showWelcomeScreen() {
+  document.getElementById('welcome-screen').classList.remove('hidden');
+  document.getElementById('quiz-screen').classList.add('hidden');
+  document.getElementById('results-screen').classList.add('hidden');
 }
 
-// Handle year change
-function handleYearChange(event) {
-  const newYear = event.target.value;
-  gameState.currentYear = newYear;
-  filteredData = filterData();
-  console.log(`Year changed to: ${newYear}, filtered to ${filteredData.length} companies`);
-  
-  // Show facts about the selected year
-  showYearFacts(newYear);
-  resetGame();
+function showQuizScreen() {
+  document.getElementById('welcome-screen').classList.add('hidden');
+  document.getElementById('quiz-screen').classList.remove('hidden');
+  document.getElementById('results-screen').classList.add('hidden');
 }
 
-// Show facts about the selected year
-function showYearFacts(year) {
-  const yearData = nbimData.filter(item => item.YEAR === parseInt(year));
-  const companyCount = yearData.length;
-  
-  let facts = `Year ${year} Portfolio: ${companyCount.toLocaleString()} companies`;
-  
-  if (companyCount > 0) {
-    const totalValueNOK = yearData.reduce((sum, item) => sum + (item.MVAL_NOK || 0), 0);
-    const totalValueUSD = yearData.reduce((sum, item) => sum + (item.MVAL_USD || 0), 0);
-    
-    if (totalValueUSD > 0) {
-      facts += ` • Total Value: $${(totalValueUSD / 1000000000).toFixed(1)}B USD`;
-    }
-    
-    const regions = [...new Set(yearData.map(item => item.REGION).filter(r => r))];
-    if (regions.length > 0) {
-      facts += ` • ${regions.length} regions`;
-    }
-  }
-  
-  // Update collection info with facts
-  const collectionInfo = document.getElementById('collection-info');
-  if (collectionInfo) {
-    collectionInfo.textContent = facts;
-  }
+function showResultsScreen() {
+  document.getElementById('welcome-screen').classList.add('hidden');
+  document.getElementById('quiz-screen').classList.add('hidden');
+  document.getElementById('results-screen').classList.remove('hidden');
 }
 
-// Filter data based on current filters
-function filterData() {
-  let filtered = [...nbimData];
-  
-  // Filter by year
-  if (gameState.currentYear !== 'all') {
-    filtered = filtered.filter(item => item.YEAR === parseInt(gameState.currentYear));
-  }
-  
-  // Filter by region
-  if (gameState.currentRegion !== 'all') {
-    filtered = filtered.filter(item => item.REGION === gameState.currentRegion);
-  }
-  
-  // Filter by industry
-  if (gameState.currentIndustry !== 'all') {
-    filtered = filtered.filter(item => item.INDUSTRY === gameState.currentIndustry);
-  }
-  
-  // Special filtering for top 100 category
-  if (gameState.currentCategory === 'top100') {
-    // Sort by market value and take top 100
-    filtered = filtered
-      .filter(item => item.MVAL_USD && item.MVAL_USD > 0)
-      .sort((a, b) => (b.MVAL_USD || 0) - (a.MVAL_USD || 0))
-      .slice(0, 100);
-  }
-  
-  return filtered;
-}
-
-// Update UI
-function updateUI() {
-  updateTitle();
-  updateYearSelector();
-  updateCategorySelector();
-  updateCollectionInfo();
-  updateHowToPlayContent();
-}
-
-// Update title
-function updateTitle() {
-  const title = document.querySelector('.title');
-  if (title) {
-    title.textContent = strings[gameState.language].title;
-  }
-}
-
-// Update year selector
-function updateYearSelector() {
-  const yearSelect = document.getElementById('year-select');
-  if (yearSelect && gameState.availableYears.length > 0) {
-    yearSelect.innerHTML = '';
-    
-    gameState.availableYears.forEach(year => {
-      const option = document.createElement('option');
-      option.value = year.toString();
-      option.textContent = year.toString();
-      if (year.toString() === gameState.currentYear) {
-        option.selected = true;
-      }
-      yearSelect.appendChild(option);
-    });
-  }
-}
-
-// Update category selector
-function updateCategorySelector() {
-  const categorySelect = document.getElementById('category-select');
-  if (categorySelect) {
-    categorySelect.innerHTML = '';
-    
-    Object.entries(strings[gameState.language].categories).forEach(([key, value]) => {
-      const option = document.createElement('option');
-      option.value = key;
-      option.textContent = value;
-      if (key === gameState.currentCategory) {
-        option.selected = true;
-      }
-      categorySelect.appendChild(option);
-    });
-  }
-}
-
-// Update collection info
-function updateCollectionInfo() {
-  const collectionInfo = document.getElementById('collection-info');
-  if (collectionInfo) {
-    collectionInfo.textContent = strings[gameState.language].collectionInfo;
-  }
-}
-
-// Update how to play content
-function updateHowToPlayContent() {
-  const content = document.getElementById('how-to-play-content');
-  if (content) {
-    content.innerHTML = '';
-    
-    strings[gameState.language].howToPlay.sections.forEach(section => {
-      const sectionDiv = document.createElement('div');
-      sectionDiv.className = 'how-to-play-section';
-      
-      const title = document.createElement('h3');
-      title.textContent = section.title;
-      sectionDiv.appendChild(title);
-      
-      const paragraph = document.createElement('p');
-      paragraph.textContent = section.content;
-      sectionDiv.appendChild(paragraph);
-      
-      content.appendChild(sectionDiv);
-    });
-  }
-}
-
-// Show welcome message
-function showWelcomeMessage() {
-  const companyInfo = document.getElementById('company-info');
-  const options = document.getElementById('options');
-  const message = document.getElementById('message');
-  
-  if (companyInfo) {
-    companyInfo.innerHTML = `
-      <h2>Welcome to NBIM Quiz!</h2>
-      <div class="company-details">
-        <div class="company-detail-item">
-          <span class="company-detail-label">Test your knowledge of</span>
-          <span class="company-detail-value">Norwegian Oil Fund holdings</span>
-        </div>
-        <div class="company-detail-item">
-          <span class="company-detail-label">Companies in portfolio</span>
-          <span class="company-detail-value">${nbimData.length.toLocaleString()}</span>
-        </div>
-        <div class="company-detail-item">
-          <span class="company-detail-label">Choose a category to start</span>
-          <span class="company-detail-value">Above ↑</span>
-        </div>
-      </div>
-    `;
-    companyInfo.classList.add('loaded');
-  }
-  
-  if (options) {
-    options.innerHTML = `
-      <button onclick="startGame()" class="primary-btn">Start Quiz</button>
-    `;
-  }
-  
-  if (message) {
-    message.textContent = 'Select a category and click "Start Quiz" to begin!';
-    message.classList.add('visible');
-  }
-  
-  // Show initial year facts
-  if (gameState.currentYear) {
-    showYearFacts(gameState.currentYear);
-  }
-}
-
-// Start game
-function startGame() {
-  if (filteredData.length === 0) {
-    alert('No data available for the selected category. Please try a different category.');
-    return;
-  }
-  
-  gameState.gameStarted = true;
-  gameState.gameEnded = false;
+// Game functions
+function resetGame() {
   gameState.currentQuestion = 0;
   gameState.score = 0;
   gameState.streak = 0;
+  gameState.maxStreak = 0;
   gameState.questions = [];
-  
-  generateQuestions();
-  showQuestion();
-  updateStreakBar();
 }
 
-// Generate questions
+function startQuiz() {
+  if (gameState.data.length === 0) {
+    showError('Data not loaded yet. Please wait...');
+    return;
+  }
+  
+  resetGame();
+  generateQuestions();
+  showQuizScreen();
+  displayQuestion();
+}
+
 function generateQuestions() {
   gameState.questions = [];
-  const availableData = [...filteredData];
-  
-  console.log(`Generating ${gameState.totalQuestions} questions from ${availableData.length} available companies`);
+  const availableData = [...gameState.data];
   
   for (let i = 0; i < gameState.totalQuestions; i++) {
     if (availableData.length === 0) break;
     
+    // Pick random company
     const randomIndex = Math.floor(Math.random() * availableData.length);
     const company = availableData.splice(randomIndex, 1)[0];
     
+    // Determine question type
     let questionType = gameState.currentCategory;
     if (questionType === 'all') {
       const types = ['country', 'industry', 'region', 'year'];
       questionType = types[Math.floor(Math.random() * types.length)];
     }
     
+    // Get correct answer
     const correctAnswer = getCorrectAnswer(company, questionType);
-    const questionOptions = generateOptions(company, questionType, availableData);
     
-    console.log(`Question ${i + 1}: ${company.NAME} - Type: ${questionType}, Correct: ${correctAnswer}, Options: [${questionOptions.join(', ')}]`);
+    // Generate options
+    const options = generateOptions(company, questionType);
     
-    const question = {
-      company: company,
+    gameState.questions.push({
+      company,
       type: questionType,
-      correctAnswer: correctAnswer,
-      options: questionOptions
-    };
-    
-    gameState.questions.push(question);
+      correctAnswer,
+      options
+    });
   }
 }
 
-// Get correct answer
 function getCorrectAnswer(company, type) {
   switch (type) {
     case 'country':
-      return company.COUNTRY || company.COUNRTY; // Handle both column names
+      return company.COUNRTY || company.COUNTRY;
     case 'industry':
       return company.INDUSTRY;
     case 'region':
       return company.REGION;
-    case 'incorporated':
-      return company.COUNTRY_INC;
-    case 'top100':
-      return company.COUNTRY || company.COUNRTY; // Same as country for top 100
-    case 'marketValue':
-      return formatMarketValue(company.MVAL_USD);
     case 'year':
       return company.YEAR.toString();
     default:
-      return company.COUNTRY || company.COUNRTY;
+      return company.COUNRTY || company.COUNTRY;
   }
 }
 
-// Format market value for display
-function formatMarketValue(value) {
-  if (!value || value === 0) return 'Unknown';
-  
-  if (value >= 1000000000) {
-    return `$${(value / 1000000000).toFixed(1)}B`;
-  } else if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
-  } else if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
-  } else {
-    return `$${value.toFixed(0)}`;
-  }
-}
-
-// Generate options
-function generateOptions(correctCompany, type, availableData) {
+function generateOptions(correctCompany, type) {
   const correctAnswer = getCorrectAnswer(correctCompany, type);
   const options = [correctAnswer];
   
-  // Special handling for market value estimation
-  if (type === 'marketValue') {
-    const correctValue = correctCompany.MVAL_USD || 0;
-    const intervals = generateMarketValueIntervals(correctValue);
-    return intervals;
-  }
-  
-  // Get unique values for the question type from ALL data (not just availableData)
-  const allValues = new Set();
-  nbimData.forEach(company => {
+  // Get unique values for this type
+  const uniqueValues = new Set();
+  gameState.data.forEach(company => {
     const value = getCorrectAnswer(company, type);
-    if (value && value !== correctAnswer && value !== 'Unknown') {
-      allValues.add(value);
+    if (value && value !== correctAnswer) {
+      uniqueValues.add(value);
     }
   });
   
-  const allValuesArray = Array.from(allValues);
+  const uniqueArray = Array.from(uniqueValues);
   
   // Add 3 more random options
-  while (options.length < 4 && allValuesArray.length > 0) {
-    const randomIndex = Math.floor(Math.random() * allValuesArray.length);
-    const randomValue = allValuesArray.splice(randomIndex, 1)[0];
+  while (options.length < 4 && uniqueArray.length > 0) {
+    const randomIndex = Math.floor(Math.random() * uniqueArray.length);
+    const randomValue = uniqueArray.splice(randomIndex, 1)[0];
     if (!options.includes(randomValue)) {
       options.push(randomValue);
-    }
-  }
-  
-  // If we still don't have 4 options, add some defaults
-  const defaultOptions = getDefaultOptions(type);
-  while (options.length < 4) {
-    const randomDefault = defaultOptions[Math.floor(Math.random() * defaultOptions.length)];
-    if (!options.includes(randomDefault)) {
-      options.push(randomDefault);
     }
   }
   
@@ -690,54 +230,6 @@ function generateOptions(correctCompany, type, availableData) {
   return shuffleArray(options);
 }
 
-// Get default options for each type if we don't have enough data
-function getDefaultOptions(type) {
-  switch (type) {
-    case 'country':
-      return ['United States', 'China', 'Japan', 'Germany', 'United Kingdom', 'France'];
-    case 'industry':
-      return ['Technology', 'Financials', 'Health Care', 'Consumer Staples', 'Industrials', 'Energy'];
-    case 'region':
-      return ['North America', 'Europe', 'Asia', 'Oceania', 'Latin America', 'Africa'];
-    case 'year':
-      return ['2025', '2024', '2023', '2022', '2021', '2020'];
-    case 'incorporated':
-      return ['United States', 'China', 'Japan', 'Germany', 'United Kingdom', 'France'];
-    default:
-      return ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
-  }
-}
-
-// Generate market value intervals for estimation quiz
-function generateMarketValueIntervals(correctValue) {
-  if (!correctValue || correctValue === 0) {
-    return ['$0', '$1M', '$10M', '$100M'];
-  }
-  
-  const correctFormatted = formatMarketValue(correctValue);
-  const options = [correctFormatted];
-  
-  // Generate 3 other intervals around the correct value
-  const multipliers = [0.1, 0.5, 2, 5, 10];
-  const usedMultipliers = new Set();
-  
-  while (options.length < 4) {
-    const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
-    if (usedMultipliers.has(randomMultiplier)) continue;
-    usedMultipliers.add(randomMultiplier);
-    
-    const intervalValue = correctValue * randomMultiplier;
-    const formatted = formatMarketValue(intervalValue);
-    
-    if (!options.includes(formatted)) {
-      options.push(formatted);
-    }
-  }
-  
-  return shuffleArray(options);
-}
-
-// Shuffle array
 function shuffleArray(array) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -747,67 +239,85 @@ function shuffleArray(array) {
   return shuffled;
 }
 
-// Show question
-function showQuestion() {
+function getQuestionText(type) {
+  const texts = {
+    country: 'Which country is this company from?',
+    industry: 'Which industry does this company belong to?',
+    region: 'Which region is this company from?',
+    year: 'In which year was this company in the portfolio?'
+  };
+  return texts[type] || 'Which country is this company from?';
+}
+
+function displayQuestion() {
   if (gameState.currentQuestion >= gameState.questions.length) {
     endGame();
     return;
   }
   
   const question = gameState.questions[gameState.currentQuestion];
-  gameState.currentQuestionData = question;
   
-  const companyInfo = document.getElementById('company-info');
-  const options = document.getElementById('options');
-  const message = document.getElementById('message');
+  // Update header
+  document.getElementById('current-question').textContent = gameState.currentQuestion + 1;
+  document.getElementById('total-questions').textContent = gameState.totalQuestions;
+  document.getElementById('current-score').textContent = gameState.score;
+  document.getElementById('current-streak').textContent = gameState.streak;
   
-  // Show company info
-  if (companyInfo) {
-    companyInfo.innerHTML = `
-      <h2 id="company-name">${question.company.NAME}</h2>
-      <div id="company-details" class="company-details">
-        <div class="company-detail-item">
-          <span class="company-detail-label">Market Value (NOK)</span>
-          <span class="company-detail-value">${question.company.MVAL_NOK.toLocaleString()}</span>
-        </div>
-        <div class="company-detail-item">
-          <span class="company-detail-label">Ownership %</span>
-          <span class="company-detail-value">${question.company.OWNERSHIP}%</span>
-        </div>
-      </div>
-    `;
-    companyInfo.classList.add('loaded');
-  }
+  // Update company info
+  document.getElementById('company-name').textContent = question.company.NAME;
+  document.getElementById('company-details').innerHTML = `
+    <div class="detail-item">
+      <span class="detail-label">
+        <i data-lucide="dollar-sign"></i> Market Value (NOK)
+      </span>
+      <span class="detail-value">${formatNumber(question.company.MVAL_NOK)}</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">
+        <i data-lucide="percent"></i> Ownership
+      </span>
+      <span class="detail-value">${question.company.OWNERSHIP}%</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">
+        <i data-lucide="building-2"></i> Industry
+      </span>
+      <span class="detail-value">${question.company.INDUSTRY}</span>
+    </div>
+  `;
   
-  // Show question and options
-  if (options) {
-    const questionText = strings[gameState.language].questions[question.type] || `Which ${question.type} is this company from?`;
-    options.innerHTML = `
-      <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem; color: #333;">${questionText}</div>
-      ${question.options.map((option, index) => `
-        <button onclick="selectAnswer('${option.replace(/'/g, "\\'")}')" class="answer-btn">${option}</button>
-      `).join('')}
-    `;
-  }
+  // Reinitialize icons
+  lucide.createIcons();
   
-  // Clear message
-  if (message) {
-    message.textContent = '';
-    message.classList.remove('visible');
-  }
+  // Update question
+  document.getElementById('question-text').textContent = getQuestionText(question.type);
   
-  updateStreakBar();
+  // Display options
+  const container = document.getElementById('options-container');
+  container.innerHTML = '';
+  
+  question.options.forEach((option, index) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = option;
+    btn.onclick = () => selectAnswer(option, question);
+    container.appendChild(btn);
+  });
+  
+  // Clear feedback
+  const feedback = document.getElementById('feedback');
+  feedback.textContent = '';
+  feedback.className = 'feedback';
 }
 
-// Select answer
-function selectAnswer(selectedAnswer) {
-  if (gameState.gameEnded) return;
+function selectAnswer(selectedAnswer, question) {
+  const options = document.querySelectorAll('.option-btn');
+  options.forEach(btn => {
+    btn.disabled = true;
+    btn.onclick = null;
+  });
   
-  const question = gameState.currentQuestionData;
   const isCorrect = selectedAnswer === question.correctAnswer;
-  
-  // Track the answer in the question object
-  question.answeredCorrectly = isCorrect;
   
   // Update score and streak
   if (isCorrect) {
@@ -820,206 +330,84 @@ function selectAnswer(selectedAnswer) {
     gameState.streak = 0;
   }
   
-  // Show result
-  showAnswerResult(isCorrect, question);
+  // Show feedback
+  const feedback = document.getElementById('feedback');
+  if (isCorrect) {
+    feedback.textContent = '✓ Correct!';
+    feedback.className = 'feedback success';
+  } else {
+    feedback.textContent = `✗ Incorrect. The correct answer is: ${question.correctAnswer}`;
+    feedback.className = 'feedback error';
+  }
   
-  // Disable buttons
-  const buttons = document.querySelectorAll('.answer-btn');
-  buttons.forEach(button => {
-    button.disabled = true;
-    if (button.textContent === question.correctAnswer) {
-      button.classList.add('correct');
-    } else if (button.textContent === selectedAnswer) {
-      button.classList.add('wrong');
+  // Mark buttons
+  options.forEach(btn => {
+    if (btn.textContent === question.correctAnswer) {
+      btn.classList.add('correct');
+    } else if (btn.textContent === selectedAnswer && !isCorrect) {
+      btn.classList.add('incorrect');
     }
   });
   
-  // Show message
-  const message = document.getElementById('message');
-  if (message) {
-    const messages = strings[gameState.language].messages;
-    let messageText = isCorrect ? messages.correct : messages.incorrect;
-    
-    if (isCorrect) {
-      if (gameState.streak >= 5) {
-        messageText = messages.excellent;
-      } else if (gameState.streak >= 3) {
-        messageText = messages.greatJob;
-      }
-    }
-    
-    message.textContent = messageText;
-    message.classList.add('visible');
-  }
+  // Update score display
+  document.getElementById('current-score').textContent = gameState.score;
+  document.getElementById('current-streak').textContent = gameState.streak;
   
-  // Move to next question after delay
+  // Move to next question
   setTimeout(() => {
     gameState.currentQuestion++;
-    if (gameState.currentQuestion < gameState.questions.length) {
-      showQuestion();
-    } else {
-      endGame();
-    }
+    displayQuestion();
   }, 2000);
 }
 
-// Show answer result
-function showAnswerResult(isCorrect, question) {
-  // This could show additional information about the company
-  // For now, we'll just update the streak bar
-  updateStreakBar();
-}
-
-// Update streak bar
-function updateStreakBar() {
-  const streakBar = document.getElementById('streak-bar');
-  if (!streakBar) return;
-  
-  streakBar.innerHTML = '';
-  
-  for (let i = 0; i < gameState.totalQuestions; i++) {
-    const circle = document.createElement('div');
-    circle.className = 'streak-circle';
-    
-    if (i < gameState.currentQuestion) {
-      // Check if this question was answered correctly
-      const question = gameState.questions[i];
-      if (question && question.answeredCorrectly !== undefined) {
-        circle.classList.add(question.answeredCorrectly ? 'filled' : 'incorrect');
-      }
-    } else if (i === gameState.currentQuestion && gameState.gameStarted && !gameState.gameEnded) {
-      circle.classList.add('active');
-    }
-    
-    streakBar.appendChild(circle);
-  }
-}
-
-// End game
 function endGame() {
-  gameState.gameEnded = true;
+  showResultsScreen();
   
-  const score = gameState.score;
-  const total = gameState.questions.length;
-  const percentage = Math.round((score / total) * 100);
+  const percentage = Math.round((gameState.score / gameState.totalQuestions) * 100);
   
-  // Show results modal
-  showRoundResults(score, total, percentage);
+  // Update results
+  document.getElementById('final-score').textContent = `${gameState.score}/${gameState.totalQuestions}`;
+  document.getElementById('final-percentage').textContent = `${percentage}%`;
+  document.getElementById('final-streak').textContent = gameState.maxStreak;
   
-  // Show diploma for perfect scores
-  if (score === total && total > 0) {
-    setTimeout(() => {
-      showDiploma(score, total, percentage);
-    }, 1000);
-  }
-}
-
-// Show round results
-function showRoundResults(score, total, percentage) {
-  const modal = document.getElementById('round-results-modal');
-  const title = document.getElementById('round-results-title');
-  const scoreElement = document.getElementById('round-results-score');
-  const feedback = document.getElementById('round-results-feedback');
-  const companiesList = document.getElementById('round-results-companies-list');
-  
-  if (title) title.textContent = strings[gameState.language].modals.roundResults;
-  if (scoreElement) scoreElement.textContent = `${score}/${total}`;
-  
-  // Show feedback
-  if (feedback) {
-    let feedbackText = '';
-    if (percentage >= 90) {
-      feedbackText = strings[gameState.language].messages.excellent;
-    } else if (percentage >= 70) {
-      feedbackText = strings[gameState.language].messages.greatJob;
-    } else if (percentage >= 50) {
-      feedbackText = strings[gameState.language].messages.notBad;
-    } else {
-      feedbackText = strings[gameState.language].messages.tryAgain;
-    }
-    feedback.textContent = feedbackText;
+  // Show message
+  const message = document.getElementById('results-message');
+  if (percentage === 100) {
+    message.textContent = 'Perfect score! You\'re a NBIM expert! 🎉';
+    message.style.background = 'var(--success-light)';
+    message.style.color = 'var(--success)';
+  } else if (percentage >= 80) {
+    message.textContent = 'Excellent work! You know your stuff! 🎯';
+    message.style.background = 'var(--success-light)';
+    message.style.color = 'var(--success)';
+  } else if (percentage >= 60) {
+    message.textContent = 'Good job! Keep learning! 💪';
+    message.style.background = 'var(--accent-light)';
+    message.style.color = 'var(--accent-primary)';
+  } else {
+    message.textContent = 'Not bad! Try again to improve! 📚';
+    message.style.background = 'var(--bg-secondary)';
+    message.style.color = 'var(--text-secondary)';
   }
   
-  // Show companies from this round
-  if (companiesList) {
-    companiesList.innerHTML = '';
-    gameState.questions.forEach(question => {
-      const tag = document.createElement('span');
-      tag.className = 'company-tag-small';
-      tag.textContent = question.company.NAME;
-      companiesList.appendChild(tag);
-    });
+  // Reinitialize icons
+  lucide.createIcons();
+}
+
+function formatNumber(num) {
+  return num ? num.toLocaleString('en-US') : 'N/A';
+}
+
+function showError(message) {
+  alert(message);
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initGame);
+
+// Listen for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (localStorage.getItem('theme') === 'system') {
+    setTheme('system');
   }
-  
-  showModal('round-results-modal');
-}
-
-// Show diploma
-function showDiploma(score, total, percentage) {
-  const modal = document.getElementById('diploma-modal');
-  const title = document.getElementById('diploma-title');
-  const subtitle = document.getElementById('diploma-subtitle');
-  const achievement = document.getElementById('diploma-achievement-text');
-  const description = document.getElementById('diploma-description-text');
-  
-  if (title) title.textContent = strings[gameState.language].messages.congratulations;
-  if (subtitle) subtitle.textContent = strings[gameState.language].messages.perfectScore;
-  if (achievement) achievement.textContent = 'Perfect Score Achieved!';
-  if (description) description.textContent = `You answered all ${total} questions correctly! Your knowledge of NBIM holdings is impressive.`;
-  
-  showModal('diploma-modal');
-}
-
-// Reset game
-function resetGame() {
-  gameState.currentQuestion = 0;
-  gameState.score = 0;
-  gameState.streak = 0;
-  gameState.questions = [];
-  gameState.currentQuestionData = null;
-  gameState.gameStarted = false;
-  gameState.gameEnded = false;
-  
-  hideAllModals();
-  showWelcomeMessage();
-  updateStreakBar();
-}
-
-// Show modal
-function showModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.style.display = 'flex';
-  }
-}
-
-// Hide modal
-function hideModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.style.display = 'none';
-  }
-}
-
-// Hide all modals
-function hideAllModals() {
-  const modals = ['congrats-modal', 'round-results-modal', 'diploma-modal', 'companies-modal', 'portfolio-modal', 'how-to-play-modal'];
-  modals.forEach(modalId => hideModal(modalId));
-}
-
-// Toggle language
-function toggleLanguage() {
-  gameState.language = gameState.language === 'en' ? 'no' : 'en';
-  updateUI();
-}
-
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  initGame().catch(error => {
-    console.error('Error initializing game:', error);
-  });
 });
-
-// Make functions globally available
-window.startGame = startGame;
-window.selectAnswer = selectAnswer;

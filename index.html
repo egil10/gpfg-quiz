@@ -1,166 +1,197 @@
 <!DOCTYPE html>
-<html lang="en" id="html-element">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NBIM Quiz - Norwegian Oil Fund Holdings Challenge</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NBIM Quiz - Norwegian Oil Fund Holdings Quiz</title>
   
-  <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="logo.svg">
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="shortcut icon" href="favicon.ico">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   
+  <!-- Styles -->
   <link rel="stylesheet" href="assets/css/style.css">
-  <meta name="description" content="A fun quiz where you guess the country, industry, or region of companies in the Norwegian Oil Fund (NBIM) portfolio. Test your knowledge of global investments!">
-  <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet"></noscript>
+  
+  <!-- Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-  <div class="top-bar">
-    <div class="top-left">
-      <span class="title">NBIM Quiz</span>
-      <span id="collection-info" class="collection-info"></span>
-    </div>
-    <div class="top-right">
-      <div class="filter-group">
-        <div class="year-selector">
-          <label for="year-select">Year:</label>
-          <select id="year-select"></select>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <h1 class="title">
+          <i data-lucide="brain-circuit"></i>
+          NBIM Quiz
+        </h1>
+        <p class="subtitle">Norwegian Oil Fund Holdings Challenge</p>
+      </div>
+      
+      <div class="header-right">
+        <!-- Theme Selector -->
+        <div class="theme-selector">
+          <button id="theme-light" class="theme-btn active" title="Light mode">
+            <i data-lucide="sun"></i>
+          </button>
+          <button id="theme-dark" class="theme-btn" title="Dark mode">
+            <i data-lucide="moon"></i>
+          </button>
+          <button id="theme-system" class="theme-btn" title="System mode">
+            <i data-lucide="monitor"></i>
+          </button>
         </div>
-        <div class="category-selector">
-          <label for="category-select">Category:</label>
-          <select id="category-select"></select>
-        </div>
+        
+        <!-- Category Selector -->
+        <select id="category-select" class="select">
+          <option value="all">All Categories</option>
+          <option value="country">Country Quiz</option>
+          <option value="industry">Industry Quiz</option>
+          <option value="region">Region Quiz</option>
+          <option value="year">Year Quiz</option>
+        </select>
       </div>
-    </div>
-  </div>
-  <div class="main-flex">
-    <div class="img-col">
-      <div id="company-info" class="company-info">
-        <h2 id="company-name"></h2>
-        <div id="company-details" class="company-details"></div>
-      </div>
-      <div id="streak-bar"></div>
-    </div>
-    <div class="btn-col" id="btn-col">
-      <div id="options"></div>
-      <div id="message"></div>
-    </div>        
-    <div id="company-popup-container"></div>
-  </div>
-  <div id="congrats-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="congrats-title">
-    <div class="modal-content">
-      <h2 id="congrats-title"></h2>
-      <p></p>
-      <button id="reset-btn"></button>
-    </div>
-  </div>
-  <div id="round-results-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="round-results-title">
-    <div class="modal-content round-results-content">
-      <h2 id="round-results-title"></h2>
-      <div class="round-results-stats">
-        <div class="stat-item">
-          <span class="stat-label"></span>
-          <span id="round-results-score" class="stat-value">0/10</span>
-        </div>
-      </div>
-      <div class="round-results-companies">
-        <span class="stat-label"></span>
-        <div id="round-results-companies-list" class="companies-list"></div>
-      </div>
-        <div id="round-results-feedback" class="round-results-feedback">
-  </div>
-      <div class="round-results-buttons">
-        <button id="round-results-play-again" class="primary-btn"></button>
-        <button id="round-results-download" class="secondary-btn" style="display:none;"></button>
-      </div>
-    </div>
-  </div>
+    </header>
 
-  <!-- Diploma Modal for Perfect Scores -->
-  <div id="diploma-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="diploma-title">
-    <div class="modal-content diploma-content">
-      <div class="diploma-container">
-        <div class="diploma-background">
-          <div class="diploma-company-bg"></div>
-          <div class="diploma-company-attribution"></div>
-        </div>
-        <div class="diploma-content-inner">
-          <div class="diploma-header">
-            <h1 id="diploma-title"></h1>
-            <h2 id="diploma-subtitle"></h2>
-          </div>
-          <div class="diploma-body">
-            <div class="diploma-achievement">
-              <h3 id="diploma-achievement-text"></h3>
-            </div>
-            <div class="diploma-description">
-              <p id="diploma-description-text"></p>
-            </div>
-            <div class="diploma-details">
-              <div class="diploma-detail">
-                <span class="diploma-label" id="diploma-awarded-label"></span>
-                <span class="diploma-value" id="diploma-awarded-value"></span>
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Welcome Screen -->
+      <div id="welcome-screen" class="welcome-screen">
+        <div class="welcome-content">
+          <i data-lucide="zap" class="welcome-icon"></i>
+          <h2>Ready to Test Your Knowledge?</h2>
+          <p>Test your knowledge of companies in the Norwegian Oil Fund portfolio</p>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <i data-lucide="building-2"></i>
+              <div>
+                <span class="stat-value" id="total-companies">187,118</span>
+                <span class="stat-label">Companies</span>
               </div>
-              <div class="diploma-detail">
-                <span class="diploma-label" id="diploma-category-label"></span>
-                <span class="diploma-value" id="diploma-category-value"></span>
+            </div>
+            <div class="stat-card">
+              <i data-lucide="map"></i>
+              <div>
+                <span class="stat-value">108</span>
+                <span class="stat-label">Countries</span>
               </div>
-              <div class="diploma-detail">
-                <span class="diploma-label" id="diploma-date-label"></span>
-                <span class="diploma-value" id="diploma-date-value"></span>
+            </div>
+            <div class="stat-card">
+              <i data-lucide="layers"></i>
+              <div>
+                <span class="stat-value">16</span>
+                <span class="stat-label">Industries</span>
               </div>
             </div>
           </div>
-          <div class="diploma-footer">
-            <!-- Removed diploma seal -->
+          <button id="start-btn" class="btn btn-primary btn-large">
+            <i data-lucide="play"></i>
+            Start Quiz
+          </button>
+        </div>
+      </div>
+
+      <!-- Quiz Screen -->
+      <div id="quiz-screen" class="quiz-screen hidden">
+        <div class="quiz-content">
+          <!-- Score Display -->
+          <div class="quiz-header">
+            <div class="score-info">
+              <span class="score-text">
+                Question <span id="current-question">0</span> / <span id="total-questions">10</span>
+              </span>
+              <span class="score-text">
+                Score: <span id="current-score">0</span>
+              </span>
+            </div>
+            <div class="streak-display">
+              <i data-lucide="flame"></i>
+              <span>Streak: <span id="current-streak">0</span></span>
+            </div>
+          </div>
+
+          <!-- Company Info -->
+          <div class="company-card">
+            <div class="company-header">
+              <i data-lucide="briefcase"></i>
+              <h2 id="company-name" class="company-name">Loading...</h2>
+            </div>
+            <div class="company-details" id="company-details">
+              <!-- Company details will be inserted here -->
+            </div>
+          </div>
+
+          <!-- Question -->
+          <div class="question-section">
+            <p id="question-text" class="question-text">Which country is this company from?</p>
+            
+            <!-- Options -->
+            <div id="options-container" class="options-container">
+              <!-- Options will be inserted here -->
+            </div>
+          </div>
+
+          <!-- Feedback -->
+          <div id="feedback" class="feedback"></div>
+        </div>
+      </div>
+
+      <!-- Results Screen -->
+      <div id="results-screen" class="results-screen hidden">
+        <div class="results-content">
+          <div class="results-header">
+            <i data-lucide="award" class="results-icon"></i>
+            <h2>Quiz Complete!</h2>
+          </div>
+          
+          <div class="results-stats">
+            <div class="result-stat">
+              <i data-lucide="target"></i>
+              <span class="result-value" id="final-score">0/10</span>
+              <span class="result-label">Score</span>
+            </div>
+            <div class="result-stat">
+              <i data-lucide="percent"></i>
+              <span class="result-value" id="final-percentage">0%</span>
+              <span class="result-label">Accuracy</span>
+            </div>
+            <div class="result-stat">
+              <i data-lucide="flame"></i>
+              <span class="result-value" id="final-streak">0</span>
+              <span class="result-label">Best Streak</span>
+            </div>
+          </div>
+
+          <div id="results-message" class="results-message"></div>
+
+          <div class="results-actions">
+            <button id="play-again-btn" class="btn btn-primary">
+              <i data-lucide="refresh-cw"></i>
+              Play Again
+            </button>
+            <button id="back-home-btn" class="btn btn-secondary">
+              <i data-lucide="home"></i>
+              Back Home
+            </button>
           </div>
         </div>
       </div>
-        <div class="diploma-buttons">
-          <button id="diploma-download" class="primary-btn"></button>
-          <button id="diploma-play-again" class="secondary-btn"></button>
-        </div>
-      </div>
-    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Data from the Norwegian Oil Fund (NBIM)</p>
+      <a href="https://www.nbim.no" target="_blank" rel="noopener noreferrer">
+        Learn more about NBIM
+        <i data-lucide="external-link"></i>
+      </a>
+    </footer>
   </div>
 
-  <!-- Modern social footer -->
-  <footer class="footer-social">
-    <div class="footer-links">
-      <a href="#" id="show-companies-link" class="social-link">Companies</a>
-      <a href="#" id="show-portfolio-link" class="footer-link">Portfolio</a>
-      <a href="https://www.nbim.no" class="social-link" target="_blank" rel="noopener">NBIM</a>
-      <a href="#" class="social-link" aria-disabled="true">GitHub</a>
-      <a href="#" id="show-how-to-play-link" class="footer-link"></a>
-      <a href="#" id="language-toggle" class="footer-link">🇬🇧</a>
-    </div>
-  </footer>
-  <div id="companies-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="companies-title">
-    <div class="modal-content company-list-modal">
-      <h2 id="companies-title"></h2>
-      <div id="company-list-columns"></div>
-      <button id="close-companies-modal"></button>
-    </div>
-  </div>
-  <div id="portfolio-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="portfolio-title">
-    <div class="modal-content portfolio-modal-content">
-      <h2 id="portfolio-title"></h2>
-      <div id="portfolio-stats"></div>
-      <button id="close-portfolio-modal"></button>
-    </div>
-  </div>
-  <div id="how-to-play-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="how-to-play-title">
-    <div class="modal-content how-to-play-modal-content">
-      <h2 id="how-to-play-title"></h2>
-      <div id="how-to-play-content">
-        <!-- Content will be dynamically generated based on language -->
-      </div>
-      <button id="close-how-to-play-modal"></button>
-    </div>
-  </div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="assets/js/script.js"></script>
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+  </script>
 </body>
 </html>
