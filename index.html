@@ -5,21 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Test your knowledge of the 187,000+ companies held by Norway's Government Pension Fund Global (GPFG). A fast, modern quiz across countries, industries, regions and years with ELO scoring.">
+  <meta name="theme-color" content="#001538">
   <title>GPFG Quiz - Norwegian Oil Fund Holdings Quiz</title>
-  
+
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-  
+
+  <!-- Preload critical data so the 20MB fetch starts during parse -->
+  <link rel="preload" href="data/equities.json" as="fetch" type="application/json" crossorigin="anonymous">
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
+
   <!-- Styles -->
   <link rel="stylesheet" href="assets/css/style.css">
-  
-  <!-- Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Icons (deferred: non-blocking, runs before the deferred app script) -->
+  <script defer src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.min.js"></script>
+  <!-- App logic (deferred: executes after lucide, before DOMContentLoaded) -->
+  <script defer src="assets/js/script.js"></script>
 </head>
 <body>
   <!-- Loading Screen -->
@@ -130,7 +137,10 @@
               <span>Answered: <strong id="answered-count">0</strong></span>
             </div>
             <div class="stat-item">
-              <span>Total: <strong id="total-count">0</strong></span>
+              <span>Accuracy: <strong id="accuracy-display">0%</strong></span>
+            </div>
+            <div class="stat-item">
+              <span>Pool: <strong id="total-count">0</strong></span>
             </div>
             <div class="stat-item">
               <span>ELO: <strong id="elo-display">800</strong></span>
@@ -151,6 +161,11 @@
 
                 <!-- Feedback -->
                 <div id="feedback" class="feedback"></div>
+
+                <!-- Keyboard hint -->
+                <p class="quiz-hint">
+                  <kbd>1</kbd>–<kbd>4</kbd> to answer · <kbd>Enter</kbd> for next
+                </p>
               </div>
             </div>
 
@@ -285,11 +300,5 @@
       </div>
     </footer>
   </div>
-
-  <script src="assets/js/script.js"></script>
-  <script>
-    // Initialize Lucide icons
-    lucide.createIcons();
-  </script>
 </body>
 </html>

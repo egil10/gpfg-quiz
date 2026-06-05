@@ -30,6 +30,10 @@ const gameState = {
   eloHistory: [],
   elo: ELO_CONFIG.initialRating,
   availableData: [],
+  // Answer/advance flow
+  awaitingNext: false,
+  answeredAt: 0,
+  nextTimer: null,
   // Cache for filter options
   filterOptions: {
     regions: [],
@@ -38,6 +42,27 @@ const gameState = {
     years: []
   }
 };
+
+// Inline SVG icons for the company card. Rendering these as static markup
+// avoids calling lucide.createIcons() (a full-document scan) on every question.
+const DETAIL_ICONS = {
+  'dollar-sign': '<line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  'percent': '<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+  'building-2': '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+  'map-pin': '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  'globe': '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  'calendar': '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>'
+};
+
+function svgIcon(name) {
+  return `<svg class="detail-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${DETAIL_ICONS[name] || ''}</svg>`;
+}
+
+// Safely (re)render lucide icons that exist as static markup (modal close buttons,
+// loading icon). Guarded so a slow/blocked CDN never throws.
+function refreshIcons() {
+  if (window.lucide) lucide.createIcons();
+}
 
 // Load ELO history from localStorage
 function loadEloHistory() {
@@ -126,9 +151,12 @@ function initTheme() {
 function setTheme(theme) {
   localStorage.setItem('theme', theme);
   document.documentElement.setAttribute('data-theme', theme);
-  
-  // Reinitialize icons
-  lucide.createIcons();
+
+  // Update the theme-color meta to match the active header/footer
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  if (themeColor) {
+    themeColor.setAttribute('content', theme === 'light' ? '#001538' : '#000000');
+  }
 }
 
 // Data loading
@@ -150,8 +178,10 @@ async function loadData() {
       MVAL_NOK: d.m
     }));
     
+    // These are never mutated in place (filters return new arrays), so we can
+    // share the reference instead of allocating extra 187k-entry copies.
     gameState.filteredData = gameState.data;
-    gameState.availableData = [...gameState.data];
+    gameState.availableData = gameState.data;
     
     // Precompute and cache filter options once
     gameState.filterOptions.regions = [...new Set(gameState.data.map(d => d.REGION))].sort();
@@ -195,6 +225,7 @@ function initGame() {
   loadEloHistory();
   initTheme();
   setupEventListeners();
+  refreshIcons(); // render static lucide markup (modal close buttons, loading icon) once
   loadData();
 }
 
@@ -277,6 +308,57 @@ function setupEventListeners() {
       checkForApplyChanges();
     }
   });
+
+  // Keyboard controls: 1-4 to answer, Enter/Space to continue or start.
+  document.addEventListener('keydown', handleKeydown);
+
+  // Click anywhere (outside modals/links) to advance once an answer is shown.
+  document.addEventListener('click', (e) => {
+    if (!gameState.awaitingNext) return;
+    if (Date.now() - gameState.answeredAt < 300) return; // ignore the answering click
+    if (e.target.closest('.modal, a, button')) return;
+    advanceToNext();
+  });
+}
+
+function isAnyModalOpen() {
+  return !!document.querySelector('.modal:not(.hidden)');
+}
+
+function handleKeydown(e) {
+  // Don't hijack typing in form fields.
+  if (e.target.matches('input, select, textarea')) return;
+  if (isAnyModalOpen()) return;
+
+  const quizVisible = !document.getElementById('quiz-screen')?.classList.contains('hidden');
+  const welcomeVisible = !document.getElementById('welcome-screen')?.classList.contains('hidden');
+
+  // Start the quiz from the welcome screen with Enter/Space.
+  if (welcomeVisible && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    startQuiz();
+    return;
+  }
+
+  if (!quizVisible) return;
+
+  // Continue to the next question.
+  if (gameState.awaitingNext) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      advanceToNext();
+    }
+    return;
+  }
+
+  // Select an answer by number.
+  if (e.key >= '1' && e.key <= '4') {
+    const btn = document.querySelectorAll('.option-btn')[Number(e.key) - 1];
+    if (btn && !btn.disabled) {
+      e.preventDefault();
+      btn.click();
+    }
+  }
 }
 
 // Show screens
@@ -303,11 +385,12 @@ function resetGame() {
   gameState.totalCount = 0;
   gameState.currentQuestion = null;
   
-  // Apply filters based on current category
+  // Apply filters based on current category. The filter helpers return fresh
+  // arrays, so we pass the shared data reference rather than copying it first.
   if (gameState.currentCategory === 'custom') {
-    gameState.availableData = applyCustomFilters([...gameState.data]);
+    gameState.availableData = applyCustomFilters(gameState.data);
   } else {
-    gameState.availableData = filterByYears([...gameState.data]);
+    gameState.availableData = filterByYears(gameState.data);
   }
   
   updateStatsDisplay();
@@ -329,8 +412,8 @@ function filterByYears(data) {
 }
 
 function applyCustomFilters(data) {
-  let filtered = [...data];
-  
+  let filtered = data;
+
   // Filter by regions
   if (gameState.customFilters.regions.length > 0) {
     filtered = filtered.filter(company => gameState.customFilters.regions.includes(company.REGION));
@@ -410,7 +493,7 @@ function startQuiz() {
 
 function generateNextQuestion() {
   if (gameState.availableData.length === 0) {
-    gameState.availableData = filterByYears([...gameState.data]);
+    gameState.availableData = filterByYears(gameState.data);
   }
   
   // Pick random company
@@ -528,76 +611,73 @@ function displayQuestion() {
     details.push(`
       <div class="detail-item">
         <span class="detail-label">
-          <i data-lucide="dollar-sign"></i> Market Value (NOK)
+          ${svgIcon('dollar-sign')} Market Value (NOK)
         </span>
         <span class="detail-value">${formatNumber(question.company.MVAL_NOK)}</span>
       </div>
     `);
-    
+
     // Always show ownership
     details.push(`
       <div class="detail-item">
         <span class="detail-label">
-          <i data-lucide="percent"></i> Ownership
+          ${svgIcon('percent')} Ownership
         </span>
         <span class="detail-value">${question.company.OWNERSHIP}%</span>
       </div>
     `);
-    
+
     // Show industry if NOT asking about industry
     if (type !== 'industry') {
       details.push(`
         <div class="detail-item">
           <span class="detail-label">
-            <i data-lucide="building-2"></i> Industry
+            ${svgIcon('building-2')} Industry
           </span>
           <span class="detail-value">${question.company.INDUSTRY}</span>
         </div>
       `);
     }
-    
+
     // Show country if NOT asking about country OR region (to avoid spoiling region question)
     if (type !== 'country' && type !== 'region') {
       details.push(`
         <div class="detail-item">
           <span class="detail-label">
-            <i data-lucide="map-pin"></i> Country
+            ${svgIcon('map-pin')} Country
           </span>
           <span class="detail-value">${question.company.COUNRTY || question.company.COUNTRY}</span>
         </div>
       `);
     }
-    
+
     // Show region if NOT asking about region OR country (to avoid spoiling country question)
     if (type !== 'region' && type !== 'country') {
       details.push(`
         <div class="detail-item">
           <span class="detail-label">
-            <i data-lucide="globe"></i> Region
+            ${svgIcon('globe')} Region
           </span>
           <span class="detail-value">${question.company.REGION}</span>
         </div>
       `);
     }
-    
+
     // Show year if NOT asking about year
     if (type !== 'year') {
       details.push(`
         <div class="detail-item">
           <span class="detail-label">
-            <i data-lucide="calendar"></i> Year
+            ${svgIcon('calendar')} Year
           </span>
           <span class="detail-value">${question.company.YEAR}</span>
         </div>
       `);
     }
-    
+
     companyDetails.innerHTML = details.join('');
   }
-  
-  // Reinitialize icons
-  lucide.createIcons();
-  
+
   // Update question
   const questionText = document.getElementById('question-text');
   if (questionText) questionText.textContent = getQuestionText(question.type);
@@ -607,14 +687,18 @@ function displayQuestion() {
   if (container) {
     container.innerHTML = '';
     
-    question.options.forEach((option) => {
+    question.options.forEach((option, index) => {
       const btn = document.createElement('button');
       btn.className = 'option-btn';
-      btn.textContent = option;
+      btn.innerHTML = `<span class="option-key">${index + 1}</span><span class="option-label"></span>`;
+      btn.querySelector('.option-label').textContent = option;
+      btn.dataset.value = option;
       btn.onclick = () => selectAnswer(option, question);
       container.appendChild(btn);
     });
   }
+
+  gameState.awaitingNext = false;
   
   // Clear feedback
   const feedback = document.getElementById('feedback');
@@ -625,41 +709,51 @@ function displayQuestion() {
 }
 
 function selectAnswer(selectedAnswer, question) {
+  if (gameState.awaitingNext) return; // ignore double-answers
+
   const options = document.querySelectorAll('.option-btn');
   options.forEach(btn => {
     btn.disabled = true;
     btn.onclick = null;
   });
-  
+
   const isCorrect = selectedAnswer === question.correctAnswer;
-  
+
   // Update counts
   gameState.answeredCount++;
   gameState.totalCount++;
   if (isCorrect) {
     gameState.correctCount++;
   }
-  
+
   // Update ELO
   updateElo(isCorrect);
-  
+
   // Update displays
   updateStatsDisplay();
-  
-  // Mark buttons
+
+  // Mark buttons using the stored value (textContent now includes the key badge)
   options.forEach(btn => {
-    if (btn.textContent === question.correctAnswer) {
+    if (btn.dataset.value === question.correctAnswer) {
       btn.classList.add('correct');
-    } else if (btn.textContent === selectedAnswer && !isCorrect) {
+    } else if (btn.dataset.value === selectedAnswer && !isCorrect) {
       btn.classList.add('incorrect');
     }
   });
-  
-  // Move to next question
-  setTimeout(() => {
-    generateNextQuestion();
-    displayQuestion();
-  }, 2000);
+
+  // Allow advancing: auto after a short delay, or immediately via key/click.
+  gameState.awaitingNext = true;
+  gameState.answeredAt = Date.now();
+  clearTimeout(gameState.nextTimer);
+  gameState.nextTimer = setTimeout(advanceToNext, 1500);
+}
+
+function advanceToNext() {
+  if (!gameState.awaitingNext) return;
+  clearTimeout(gameState.nextTimer);
+  gameState.awaitingNext = false;
+  generateNextQuestion();
+  displayQuestion();
 }
 
 function updateStatsDisplay() {
@@ -670,6 +764,14 @@ function updateStatsDisplay() {
   if (correctCount) correctCount.textContent = gameState.correctCount;
   if (answeredCount) answeredCount.textContent = gameState.answeredCount;
   if (totalCount) totalCount.textContent = gameState.availableData.length.toLocaleString();
+
+  const accuracy = document.getElementById('accuracy-display');
+  if (accuracy) {
+    const pct = gameState.answeredCount > 0
+      ? Math.round((gameState.correctCount / gameState.answeredCount) * 100)
+      : 0;
+    accuracy.textContent = `${pct}%`;
+  }
 }
 
 function formatNumber(num) {
@@ -731,12 +833,15 @@ function drawEloChart() {
   const lineColor = isDark ? '#60a5fa' : '#3b82f6';
   const textColor = isDark ? '#cbd5e1' : '#64748b';
   
-  // Find min/max for scaling
-  let minElo = Infinity, maxElo = Infinity;
+  // Find min/max for scaling. A manual loop avoids Math.min(...spread), which
+  // can blow the call stack once the history grows to thousands of points.
+  let minElo = Infinity, maxElo = -Infinity;
   if (gameState.eloHistory.length > 0) {
-    minElo = Math.min(...gameState.eloHistory.map(h => h.elo));
-    maxElo = Math.max(...gameState.eloHistory.map(h => h.elo));
-    const range = maxElo - minElo;
+    for (const h of gameState.eloHistory) {
+      if (h.elo < minElo) minElo = h.elo;
+      if (h.elo > maxElo) maxElo = h.elo;
+    }
+    const range = (maxElo - minElo) || 1; // avoid a zero range (flat line)
     minElo = minElo - range * 0.1;
     maxElo = maxElo + range * 0.1;
   }
@@ -820,9 +925,6 @@ function drawEloChart() {
   ctx.textAlign = 'center';
   ctx.fillText('ELO Rating', 0, 0);
   ctx.restore();
-  
-  // Reset for lucide icons
-  lucide.createIcons();
 }
 
 // Year Filter Functions - Cached checkboxes for performance
